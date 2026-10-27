@@ -53,6 +53,13 @@
 | 40013 | REVIEW_EXISTS | 该订单项已评价 | 409 |
 | 40014 | ADDRESS_INVALID | 地址缺失或不属于本人 | 400 |
 | 40015 | EMAIL_ALREADY_USED | 邮箱已注册 | 409 |
+| 40016 | MERCHANT_NOT_APPROVED | 店铺未通过审核 | 403 |
+| 40017 | MERCHANT_SUSPENDED | 店铺已封禁 | 403 |
+| 40018 | MERCHANT_APPLY_DUPLICATE | 已有待审核的入驻申请 | 409 |
+| 40019 | SUB_ORDER_STATE_INVALID | 子单当前状态不允许该操作 | 409 |
+| 40020 | SETTLEMENT_EXISTS | 该商家该周期已生成结算单 | 409 |
+| 40021 | SETTLEMENT_NOT_ELIGIBLE | 子单未满足结算条件 | 409 |
+| 30003 | MERCHANT_SCOPE_FORBIDDEN | 访问了非本店资源 | 403 |
 | 50001 | INTERNAL_ERROR | 系统异常（不回显堆栈） | 500 |
 | 50002 | UPSTREAM_TIMEOUT | 下游超时 | 504 |
 

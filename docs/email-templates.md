@@ -64,6 +64,39 @@
 | 主题 | 订单 {orderNo} 的退款已处理 |
 | 变量 | `orderNo`、`refundAmount`、`refundedAt` |
 
+### 6. `MERCHANT_APPROVED` 入驻通过
+
+| 项 | 内容 |
+|---|---|
+| 触发 | 管理员审核通过 |
+| 收件人 | 申请人邮箱 |
+| 业务键 | `merchant_approved:{merchantId}` |
+| 主题 | 你的店铺「{shopName}」已开通 |
+| 变量 | `shopName`、`merchantUrl`、`commissionRate` |
+| 正文要点 | 开店成功、佣金比例、进入商家后台的入口 |
+
+### 7. `MERCHANT_REJECTED` 入驻驳回
+
+| 项 | 内容 |
+|---|---|
+| 触发 | 管理员驳回 |
+| 业务键 | `merchant_rejected:{merchantId}:{reviewedAt}` |
+| 主题 | 店铺申请未通过，可修改后重新提交 |
+| 变量 | `shopName`、`reason`、`reapplyUrl` |
+| 正文要点 | 驳回原因（原文）、重提入口 |
+
+### 8. `SETTLEMENT_CREATED` 结算单生成（P1）
+
+| 项 | 内容 |
+|---|---|
+| 触发 | 定时任务生成结算单 |
+| 收件人 | 商家账号邮箱 |
+| 业务键 | `settlement_created:{settlementNo}` |
+| 主题 | {periodStart} ~ {periodEnd} 结算单已生成，应结 {netAmount} 元 |
+| 变量 | `settlementNo`、`periodStart`、`periodEnd`、`grossAmount`、`commission`、`netAmount` |
+
+> 发货邮件按**子单**发，一个订单跨三个商家就发三封，各自带自己的商品与运单号。
+
 ## 验收线
 
 1. 注册后 Mailpit 收到验证邮件，点链接能完成验证
