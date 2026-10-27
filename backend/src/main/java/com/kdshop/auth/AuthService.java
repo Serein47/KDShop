@@ -49,6 +49,7 @@ public class AuthService {
     private static final Duration LOCK_DURATION = Duration.ofMinutes(15);
     private static final Duration VERIFY_TOKEN_TTL = Duration.ofMinutes(30);
     private static final String LOGIN_KEY_PREFIX = "rate:login:";
+    private static final String SESSION_KEY = "user:sessions:";
 
     private final UserMapper userMapper;
     private final RoleMapper roleMapper;
@@ -138,6 +139,9 @@ public class AuthService {
         if ("DISABLED".equals(user.getStatus())) {
             throw new BusinessException(ErrorCode.ACCOUNT_DISABLED);
         }
+        if (user.getEmailVerifiedAt() == null) {
+            throw new BusinessException(ErrorCode.EMAIL_NOT_VERIFIED);
+        }
 
         redis.delete(lockKey);
 
@@ -155,13 +159,24 @@ public class AuthService {
         SecurityContextHolder.setContext(context);
         securityContextRepository.saveContext(context, httpRequest, httpResponse);
 
+        HttpSession session = httpRequest.getSession(false);
+        if (session != null) {
+            String key = SESSION_KEY + user.getId();
+            redis.opsForSet().add(key, session.getId());
+            redis.expire(key, Duration.ofHours(24));
+        }
+
         return toView(user, roles);
     }
 
     public void logout(HttpServletRequest request) {
+        var authentication = SecurityContextHolder.getContext().getAuthentication();
         SecurityContextHolder.clearContext();
         HttpSession session = request.getSession(false);
         if (session != null) {
+            if (authentication != null && authentication.getPrincipal() instanceof Long userId) {
+                redis.opsForSet().remove(SESSION_KEY + userId, session.getId());
+            }
             session.invalidate();
         }
     }
