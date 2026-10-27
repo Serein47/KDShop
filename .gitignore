@@ -1,0 +1,14 @@
+# 依赖与构建产物
+target/
+node_modules/
+dist/
+.env
+.env.local
+*.log
+.idea/
+.vscode/
+*.iml
+.DS_Store
+Thumbs.db
+mysql-data/
+minio-data/
