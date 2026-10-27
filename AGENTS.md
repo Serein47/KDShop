@@ -63,7 +63,8 @@ KDShop 是一个多商家电商平台：顾客端（浏览、购买、订单）�
 | 需求与验收 | `docs/requirements.md` | 每条需求有 ID 与验收线 |
 | 架构与决策 | `docs/architecture.md`、`docs/adr/` | 关键选择各有 ADR |
 | 数据模型 | `docs/data-model.md` | 与迁移文件一致 |
-| API 契约 | `docs/api.md` | 与实现一致，含错误码 |
+| 种子数据 | `docs/seed-data.md` | 账号、类目、商品、订单可一键重建 |
+| API 契约 | `docs/接口文档/` | 05 份分域文档，每个端点含请求/响应示例与错误码 |
 | 测试 | `tests/`、CI | 门禁全绿，报告可复现 |
 | 线上站点 | Q5 指定环境 | 公网可访问，冒烟通过 |
 | 测试账号 | README + `docs/test-accounts.md` | 上线后逐条实测可登录 |
