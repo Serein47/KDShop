@@ -1,8 +1,0 @@
-# 本地开发：额外加载演示种子数据
-spring:
-  flyway:
-    locations: classpath:db/migration,classpath:db/seed
-
-logging:
-  level:
-    com.kdshop: DEBUG
