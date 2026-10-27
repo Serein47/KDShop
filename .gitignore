@@ -15,3 +15,5 @@ out/
 Thumbs.db
 mysql-data/
 minio-data/
+
+.pr-body.md
