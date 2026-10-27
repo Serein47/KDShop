@@ -2,6 +2,7 @@ package com.kdshop.meta;
 
 import com.kdshop.common.TraceIdFilter;
 import com.kdshop.config.MetaProperties;
+import com.kdshop.config.SecurityConfig;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -17,7 +18,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @WebMvcTest(MetaController.class)
 @EnableConfigurationProperties(MetaProperties.class)
-@Import(TraceIdFilter.class)
+@Import({TraceIdFilter.class, SecurityConfig.class})
 @TestPropertySource(properties = {
         "kdshop.meta.currency=CNY",
         "kdshop.meta.timezone=Asia/Shanghai",
