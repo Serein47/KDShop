@@ -16,7 +16,7 @@ stateDiagram-v2
     CANCELLED: 已取消
 
     PENDING_PAYMENT --> PAID : 支付回调成功
-    PENDING_PAYMENT --> CANCELLED : 用户取消 / 30 分钟超时
+    PENDING_PAYMENT --> CANCELLED : 用户取消 / 15 分钟超时
     PAID --> SHIPPED : 后台发货
     SHIPPED --> COMPLETED : 用户确认收货 / 7 天自动
     PAID --> REFUNDING : 申请退款
@@ -35,7 +35,7 @@ stateDiagram-v2
 | 已付款 → 已发货 | 运营/管理员 | 已付款且无进行中的退款 | 写 `shipments`、置 `shipped_at`、发发货邮件 |
 | 已发货 → 已完成 | 用户 / 定时任务 | 已发货 | 置 `completed_at` |
 | 已付款/已发货 → 退款中 | 顾客 | 无进行中的退款 | 生成 `refunds` 记录 |
-| 退款中 → 已退款 | 客服/运营 | 退款单审核通过 | 调模拟网关退款、库存回补策略见 ADR-0005、发邮件 |
+| 退款中 → 已退款 | 客服/运营 | 退款单审核通过 | 调模拟网关退款、库存回补策略见 ADR-0004、发邮件 |
 | 退款中 → 已付款 | 客服/运营 | 驳回并填写原因 | 无金额变动 |
 
 **不变量**
@@ -88,7 +88,23 @@ stateDiagram-v2
     APPROVED --> APPLIED : 网关失败（可重试）
 ```
 
-本期只支持**整单退款**。退款金额 = 订单实付金额；退款成功后订单转「已退款」，库存是否回补由 ADR-0005 记录。
+本期只支持**整单退款**。退款金额 = 订单实付金额；退款成功后订单转「已退款」，库存是否回补由 ADR-0004 记录。
+
+## 超时取消怎么跑
+
+不用消息队列的延迟消息，用「扫描 + 条件更新」，可解释、可重跑：
+
+```sql
+SELECT id FROM orders
+WHERE status = 'PENDING_PAYMENT' AND created_at < NOW() - INTERVAL 15 MINUTE
+ORDER BY id LIMIT 200;
+```
+
+- 每 60 秒跑一次，索引 `idx_orders_status_created`(status, created_at)
+- 逐条执行「条件更新 + 释放库存 + 写状态日志」，状态条件保证与用户手动取消不打架
+- 任务本身幂等：重复扫描不会重复释放，因为第一次已把状态改掉
+
+选择扫描而非延迟队列的理由：15 分钟误差可接受，链条短、出问题好查；订单量上万后再换 Redis ZSET 或 RocketMQ 延迟消息。
 
 ## 与库存的关系
 
@@ -97,4 +113,4 @@ stateDiagram-v2
 | 提交订单 | 锁定库存 `locked_stock += n` | 条件更新，失败即返回「库存不足」 |
 | 支付成功 | 扣减 `stock -= n`、`locked_stock -= n` | 与订单转已付款同事务 |
 | 取消/超时 | 释放 `locked_stock -= n` | 幂等：重复取消不重复释放 |
-| 退款成功 | 回补 `stock += n` | 仅未发货订单回补，已发货不回补（ADR-0005） |
+| 退款成功 | 回补 `stock += n` | 仅未发货订单回补，已发货不回补（ADR-0004） |

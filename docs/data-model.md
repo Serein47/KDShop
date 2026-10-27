@@ -91,7 +91,7 @@ erDiagram
 3. 订单行金额之和 = `orders.goods_amount_cent`
 4. `payments.amount_cent` = 对应订单的 `pay_amount_cent`，不符则回调拒绝
 5. 一个订单同时最多一条 `PENDING/SUCCESS` 支付记录（部分退款的后续版本再放宽）
-6. 已使用的优惠券不可再用；退款后券是否返还由 ADR-0005 决定
+6. 已使用的优惠券不可再用；退款后券是否返还由 ADR-0004 决定
 
 ## 索引与容量
 
