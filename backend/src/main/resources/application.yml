@@ -1,6 +1,11 @@
 spring:
   application:
     name: kdshop-backend
+  mvc:
+    throw-exception-if-no-handler-found: true
+  web:
+    resources:
+      add-mappings: false
   jackson:
     default-property-inclusion: non_null
     time-zone: Asia/Shanghai
@@ -43,3 +48,13 @@ logging:
   level:
     root: INFO
     com.kdshop: DEBUG
+
+kdshop:
+  meta:
+    currency: CNY
+    timezone: Asia/Shanghai
+    shipping-free-threshold-cent: 9900
+    shipping-fee-cent: 1000
+    pay-timeout-minutes: 15
+    auto-confirm-days: 15
+    settlement-protection-days: 7

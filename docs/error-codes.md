@@ -29,6 +29,7 @@
 | 10001 | PARAM_INVALID | 参数校验失败，`data` 返回字段级错误 | 400 |
 | 10002 | BODY_MALFORMED | 请求体不是合法 JSON | 400 |
 | 10003 | PAGE_OUT_OF_RANGE | 分页参数越界 | 400 |
+| 10004 | ENDPOINT_NOT_FOUND | 接口不存在 | 404 |
 | 20001 | UNAUTHENTICATED | 未登录 | 401 |
 | 20002 | SESSION_EXPIRED | 会话已过期 | 401 |
 | 20003 | BAD_CREDENTIALS | 账号或密码错误 | 401 |
