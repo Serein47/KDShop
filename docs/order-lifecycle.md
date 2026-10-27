@@ -18,7 +18,7 @@ stateDiagram-v2
     PENDING_PAYMENT --> PAID : 支付回调成功
     PENDING_PAYMENT --> CANCELLED : 用户取消 / 15 分钟超时
     PAID --> SHIPPED : 后台发货
-    SHIPPED --> COMPLETED : 用户确认收货 / 7 天自动
+    SHIPPED --> COMPLETED : 用户确认收货 / 超时自动确认
     PAID --> REFUNDING : 申请退款
     SHIPPED --> REFUNDING : 申请退款
     REFUNDING --> REFUNDED : 审核通过
@@ -88,7 +88,7 @@ stateDiagram-v2
     APPROVED --> APPLIED : 网关失败（可重试）
 ```
 
-本期只支持**整单退款**。退款金额 = 订单实付金额；退款成功后订单转「已退款」，库存是否回补由 ADR-0004 记录。
+首版只支持**整单退款**。退款金额 = 订单实付金额；退款成功后订单转「已退款」，库存是否回补由 ADR-0004 记录。
 
 ## 超时取消怎么跑
 
