@@ -3,6 +3,9 @@ package com.kdshop.auth;
 import com.kdshop.auth.dto.LoginRequest;
 import com.kdshop.auth.dto.RegisterRequest;
 import com.kdshop.auth.dto.RegisterResult;
+import com.kdshop.auth.dto.EmailRequest;
+import com.kdshop.auth.dto.ResetPasswordRequest;
+import com.kdshop.auth.dto.TokenRequest;
 import com.kdshop.auth.dto.UserView;
 import com.kdshop.common.ApiResponse;
 import jakarta.servlet.http.HttpServletRequest;
@@ -24,9 +27,11 @@ import java.util.Map;
 public class AuthController {
 
     private final AuthService authService;
+    private final VerificationService verificationService;
 
-    public AuthController(AuthService authService) {
+    public AuthController(AuthService authService, VerificationService verificationService) {
         this.authService = authService;
+        this.verificationService = verificationService;
     }
 
     /** 前端启动时取一次 CSRF token，同时下发 XSRF-TOKEN Cookie。 */
@@ -54,6 +59,31 @@ public class AuthController {
     public ApiResponse<Void> logout(HttpServletRequest request) {
         authService.logout(request);
         return ApiResponse.ok(null);
+    }
+
+    @PostMapping("/verify-email")
+    public ApiResponse<Map<String, Boolean>> verifyEmail(@Valid @RequestBody TokenRequest request) {
+        verificationService.verifyEmail(request.token());
+        return ApiResponse.ok(Map.of("verified", true));
+    }
+
+    @PostMapping("/resend-verification")
+    public ApiResponse<Map<String, Boolean>> resendVerification(@Valid @RequestBody EmailRequest request) {
+        verificationService.resendVerification(request.email());
+        return ApiResponse.ok(Map.of("sent", true));
+    }
+
+    @PostMapping("/forgot-password")
+    public ApiResponse<Map<String, Boolean>> forgotPassword(@Valid @RequestBody EmailRequest request) {
+        verificationService.forgotPassword(request.email());
+        return ApiResponse.ok(Map.of("sent", true));
+    }
+
+    @PostMapping("/reset-password")
+    public ApiResponse<Map<String, Boolean>> resetPassword(@Valid @RequestBody ResetPasswordRequest request,
+                                                          HttpServletRequest httpRequest) {
+        verificationService.resetPassword(request.token(), request.newPassword(), httpRequest);
+        return ApiResponse.ok(Map.of("reset", true));
     }
 
     @GetMapping("/me")
