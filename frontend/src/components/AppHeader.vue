@@ -12,6 +12,16 @@ function search() {
 </script>
 
 <template>
+  <div class="promo">
+    <div class="container promo__inner">
+      <span>满 ¥99 包邮</span>
+      <i />
+      <span>新人立减 ¥10</span>
+      <i />
+      <span>定制商品支持工期保障，超时自动赔付</span>
+    </div>
+  </div>
+
   <header class="head">
     <div class="container head__inner">
       <RouterLink to="/" class="brand">
@@ -21,78 +31,101 @@ function search() {
 
       <nav class="nav">
         <RouterLink to="/products">全部商品</RouterLink>
-        <a href="/#craft">按工艺</a>
+        <a href="/#craft">手作专区</a>
         <a href="/#about">关于</a>
       </nav>
 
       <form class="search" @submit.prevent="search">
-        <input v-model="keyword" type="search" placeholder="搜一件手作" aria-label="搜索作品" />
+        <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+          <circle cx="11" cy="11" r="7" fill="none" stroke="currentColor" stroke-width="2" />
+          <path d="M16.5 16.5 21 21" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+        </svg>
+        <input v-model="keyword" type="search" placeholder="搜一件商品" aria-label="搜索商品" />
       </form>
     </div>
   </header>
 </template>
 
 <style scoped>
+.promo {
+  background: var(--forest);
+  color: #efe6d6;
+  font-size: 12px;
+  letter-spacing: 0.06em;
+}
+.promo__inner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  height: 34px;
+}
+.promo i { width: 3px; height: 3px; border-radius: 50%; background: rgba(255,255,255,.45); }
+
 .head {
   position: sticky;
   top: 0;
   z-index: 20;
+  background: rgba(250, 246, 239, 0.9);
   backdrop-filter: blur(10px);
-  background: color-mix(in srgb, var(--paper) 82%, transparent);
   border-bottom: 1px solid var(--line);
 }
-.head__inner {
-  display: flex;
-  align-items: center;
-  gap: 32px;
-  height: 68px;
-}
-.brand {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
+.head__inner { display: flex; align-items: center; gap: 30px; height: 70px; }
+.brand { display: flex; align-items: center; gap: 10px; }
 .brand__mark {
   display: grid;
   place-items: center;
-  width: 34px;
-  height: 34px;
-  border-radius: 50%;
-  background: var(--ink);
-  color: var(--paper);
+  width: 36px;
+  height: 36px;
+  border-radius: 12px;
+  background: var(--rust);
+  color: #fff;
   font-family: var(--serif);
   font-size: 14px;
-  letter-spacing: 0.02em;
+  box-shadow: 0 6px 14px rgba(217,72,15,.28);
 }
-.brand__text {
-  font-family: var(--serif);
-  font-size: 17px;
-  letter-spacing: 0.12em;
+.brand__text { font-family: var(--serif); font-size: 17px; letter-spacing: 0.1em; }
+.nav { display: flex; gap: 26px; font-size: 14px; color: var(--ink-soft); }
+.nav a { position: relative; padding: 6px 0; }
+.nav a::after {
+  content: "";
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  height: 2px;
+  background: var(--rust);
+  transform: scaleX(0);
+  transition: transform .18s ease;
 }
-.nav {
+.nav a:hover { color: var(--ink); }
+.nav a:hover::after { transform: scaleX(1); }
+
+.search {
+  margin-left: auto;
   display: flex;
-  gap: 24px;
-  font-size: 14px;
-  color: var(--ink-soft);
-}
-.nav a { position: relative; }
-.nav a:hover { color: var(--rust); }
-.search input {
-  width: 200px;
-  padding: 8px 14px;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
   border: 1px solid var(--line);
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.55);
-  font-size: 13px;
-  outline: none;
-  transition: width 0.2s ease, border-color 0.2s;
+  background: #fff;
+  color: var(--muted);
+  transition: border-color .18s, box-shadow .18s;
 }
-.search input:focus {
-  width: 240px;
+.search:focus-within {
   border-color: var(--rust);
+  box-shadow: 0 0 0 3px var(--rust-soft);
 }
-@media (max-width: 860px) {
+.search input {
+  border: 0;
+  outline: 0;
+  width: 180px;
+  font-size: 13px;
+  background: transparent;
+  color: var(--ink);
+}
+@media (max-width: 900px) {
   .nav { display: none; }
-  .search input { width: 130px; }
+  .search input { width: 120px; }
+  .promo__inner span:last-child { display: none; }
 }
 </style>
