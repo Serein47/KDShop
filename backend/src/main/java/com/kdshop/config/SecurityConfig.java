@@ -60,6 +60,10 @@ public class SecurityConfig {
                                 "/api/v1/auth/forgot-password",
                                 "/api/v1/auth/reset-password",
                                 "/api/v1/meta",
+                                "/api/v1/categories",
+                                "/api/v1/tags",
+                                "/api/v1/products/**",
+                                "/api/v1/shops/**",
                                 "/actuator/health",
                                 "/error").permitAll()
                         .anyRequest().authenticated())
