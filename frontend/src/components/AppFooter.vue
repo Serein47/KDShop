@@ -1,9 +1,9 @@
 <template>
   <footer class="foot">
     <div class="container foot__inner">
-      <p class="foot__quote">手作的意义，是让每一件东西都带着人的时间。</p>
+      <p class="foot__quote">把日常用得上的，挑得讲究些。</p>
       <div class="foot__meta">
-        <span>KDShop · 独立设计与手作市集</span>
+        <span>KDShop · 多商家商城</span>
         <span>演示环境 · 数据均为虚构</span>
       </div>
     </div>

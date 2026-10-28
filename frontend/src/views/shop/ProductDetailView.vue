@@ -56,7 +56,7 @@ onMounted(async () => {
 
     <template v-else-if="product">
       <nav class="crumb">
-        <RouterLink to="/products">全部作品</RouterLink>
+        <RouterLink to="/products">全部商品</RouterLink>
         <span>/</span>
         <RouterLink :to="{ path: '/products', query: { categoryId: product.categoryId } }">
           {{ product.categoryName }}

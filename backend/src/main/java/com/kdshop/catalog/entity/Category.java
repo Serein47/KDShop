@@ -14,4 +14,5 @@ public class Category {
     private String name;
     private Integer sort;
     private String status;
+    private Integer featured;
 }

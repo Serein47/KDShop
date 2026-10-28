@@ -13,6 +13,9 @@ const loading = ref(false)
 const categories = ref<CategoryNode[]>([])
 const tags = ref<TagGroups>({ CRAFT: [], MATERIAL: [], OCCASION: [] })
 
+const generalCategories = computed(() => categories.value.filter((c) => !c.featured))
+const featuredCategories = computed(() => categories.value.filter((c) => c.featured))
+
 const page = computed(() => Number(route.query.page ?? 1))
 const size = 12
 
@@ -94,9 +97,27 @@ const totalPages = computed(() => Math.max(1, Math.ceil(total.value / size)))
   <div class="list container">
     <aside class="rail">
       <section class="rail__block">
-        <h3>品类</h3>
+        <h3>全部分类</h3>
         <ul>
-          <li v-for="top in categories" :key="top.id">
+          <li v-for="top in generalCategories" :key="top.id">
+            <button class="link" :class="{ on: query.categoryId === top.id }" @click="apply({ categoryId: top.id })">
+              {{ top.name }}
+            </button>
+            <ul class="sub">
+              <li v-for="child in top.children" :key="child.id">
+                <button class="link link--sm" :class="{ on: query.categoryId === child.id }" @click="apply({ categoryId: child.id })">
+                  {{ child.name }}
+                </button>
+              </li>
+            </ul>
+          </li>
+        </ul>
+      </section>
+
+      <section class="rail__block rail__block--special">
+        <h3>手作专区</h3>
+        <ul>
+          <li v-for="top in featuredCategories" :key="top.id">
             <button class="link" :class="{ on: query.categoryId === top.id }" @click="apply({ categoryId: top.id })">
               {{ top.name }}
             </button>
@@ -128,7 +149,7 @@ const totalPages = computed(() => Math.max(1, Math.ceil(total.value / size)))
     <section class="main">
       <div class="toolbar">
         <p class="count">
-          共 <strong>{{ total }}</strong> 件作品
+          共 <strong>{{ total }}</strong> 件商品
           <span v-if="activeFilters.length" class="active">
             <button v-for="f in activeFilters" :key="f.label" class="chip chip--active" @click="apply(f.patch)">
               {{ f.label }} ×
@@ -149,7 +170,7 @@ const totalPages = computed(() => Math.max(1, Math.ceil(total.value / size)))
 
       <div v-if="loading" class="state">正在翻找…</div>
       <div v-else-if="!products.length" class="state">
-        没有找到作品，换个工艺或场景试试。
+        没有找到商品，换个分类或筛选试试。
       </div>
       <div v-else class="grid">
         <ProductCardView v-for="item in products" :key="item.id" :product="item" />
@@ -172,6 +193,7 @@ const totalPages = computed(() => Math.max(1, Math.ceil(total.value / size)))
   padding: 48px 0 0;
 }
 .rail__block { margin-bottom: 34px; }
+.rail__block--special h3 { color: var(--rust); }
 .rail__block h3 {
   font-size: 15px;
   margin-bottom: 12px;
