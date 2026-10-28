@@ -1,6 +1,11 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
+import { useCartStore } from '@/stores/cart'
+import { useAuthStore } from '@/stores/auth'
+
+const cart = useCartStore()
+const auth = useAuthStore()
 
 const router = useRouter()
 const keyword = ref('')
@@ -34,6 +39,19 @@ function search() {
         <a href="/#craft">手作专区</a>
         <a href="/#about">关于</a>
       </nav>
+
+      <RouterLink to="/cart" class="cart-link">
+        购物车
+        <span v-if="cart.count" class="cart-badge">{{ cart.count }}</span>
+      </RouterLink>
+
+      <div class="auth">
+        <RouterLink v-if="!auth.user" to="/login" class="login-link">登录</RouterLink>
+        <template v-else>
+          <span class="nick">{{ auth.user.nickname }}</span>
+          <button class="logout" @click="auth.logout()">退出</button>
+        </template>
+      </div>
 
       <form class="search" @submit.prevent="search">
         <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
@@ -99,8 +117,37 @@ function search() {
 .nav a:hover { color: var(--ink); }
 .nav a:hover::after { transform: scaleX(1); }
 
-.search {
+.cart-link {
+  position: relative;
   margin-left: auto;
+  font-size: 14px;
+  color: var(--ink-soft);
+  padding: 6px 10px;
+  border-radius: 999px;
+}
+.cart-link:hover { color: var(--rust); }
+.cart-badge {
+  position: absolute;
+  top: -4px;
+  right: -8px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--rust);
+  color: #fff;
+  font-size: 11px;
+  line-height: 18px;
+  text-align: center;
+}
+.auth { display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--muted); }
+.login-link { padding: 6px 14px; border: 1px solid var(--line); border-radius: 999px; color: var(--ink-soft); }
+.login-link:hover { border-color: var(--rust); color: var(--rust); }
+.nick { color: var(--ink-soft); }
+.logout { border: 0; background: none; color: var(--muted); cursor: pointer; font-size: 12px; }
+.logout:hover { color: var(--rust); }
+.search {
+  margin-left: 8px;
   display: flex;
   align-items: center;
   gap: 8px;

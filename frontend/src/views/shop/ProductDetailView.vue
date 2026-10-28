@@ -3,6 +3,10 @@ import { computed, onMounted, ref } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
 import { fetchProduct, yuan, type ProductDetail } from '@/api/catalog'
 import ProductMedia from '@/components/ProductMedia.vue'
+import { ElMessage } from 'element-plus'
+import { useCartStore } from '@/stores/cart'
+
+const cart = useCartStore()
 
 const route = useRoute()
 const product = ref<ProductDetail | null>(null)
@@ -39,6 +43,30 @@ const saleText = computed(() => {
   if (product.value.saleMode === 'PREORDER') return `预售 · 付定金后 ${product.value.leadDays} 天发货`
   return '现货 · 48 小时内发出'
 })
+
+async function addToCart() {
+  if (!canBuy.value || !sku.value || !product.value) {
+    ElMessage.warning('请先完成必选项')
+    return
+  }
+  try {
+    await cart.add(
+      {
+        skuId: sku.value.id,
+        productId: product.value.id,
+        name: product.value.name,
+        spec: sku.value.spec,
+        image: product.value.mainImage,
+        price: sku.value.price,
+        stock: sku.value.stock,
+      },
+      qty.value,
+    )
+    ElMessage.success('已加入购物车')
+  } catch (e: any) {
+    ElMessage.error(e?.message || '加入购物车失败')
+  }
+}
 
 onMounted(async () => {
   try {
@@ -139,9 +167,9 @@ onMounted(async () => {
               <span>{{ qty }}</span>
               <button :disabled="qty >= (sku?.stock ?? 1)" @click="qty++">+</button>
             </div>
-            <button class="cta" :disabled="!canBuy">加入购物车</button>
+            <button class="cta" :disabled="!canBuy" @click="addToCart">加入购物车</button>
           </div>
-          <p class="hint">购物车与下单将在下一版开放，当前可先浏览与筛选。</p>
+          <p class="hint">支持购物车与登录后同步；结算与支付在下一版开放。</p>
         </div>
       </div>
 
