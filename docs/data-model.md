@@ -117,3 +117,36 @@ erDiagram
 ## 索引与容量
 
 100～1000 SKU 量级：商品列表走 `(category_id, status)`；商家后台走 `(merchant_id, status)`；搜索用 MySQL FULLTEXT（ngram 分词器）。商品量超过 1 万再考虑搜索引擎。
+
+## V3/V4 扩展（2026-10-28）
+
+定位于手作市集后新增的结构，见 [ADR-0009](adr/0009-数据模型特色化.md)。两版迁移均为增量变更，已在空库按 V1→V4 验证。
+
+### V3 定制交易与售后
+
+| 表 | 关键字段 |
+|---|---|
+| `products`（加列） | `sale_mode`(IN_STOCK/PREORDER/CUSTOM)、`lead_days`、`deposit_rate`(基点) |
+| `orders`（加列） | `order_type`、`deposit_cent`、`balance_cent`、`promised_ship_at`、`penalty_cent` |
+| `payments`（加列） | `purpose`(FULL/DEPOSIT/BALANCE) |
+| `after_sales` | as_no、merchant_order_id、type(REFUND_ONLY/RETURN_REFUND)、reason_code、evidence_json、status、refund_amount_cent、return_*、received_at、inspect_result(GOOD/DEFECTIVE)、responsibility(MERCHANT/LOGISTICS/CUSTOMER) |
+| `after_sales_logs` | 售后状态流水 |
+| `penalties` | 赔付单：merchant_order_id + days_overdue 唯一，防止重复计赔 |
+
+### V4 作品档案与多维标签
+
+| 表 | 关键字段 |
+|---|---|
+| `products`（加列） | `story`、`edition_size`、`edition_no`、`is_unique`、`flaw_note`、`requires_flaw_ack` |
+| `orders`（加列） | `is_gift`、`gift_message`、`gift_wrap` |
+| `tags` | dimension(CRAFT/MATERIAL/OCCASION) + slug 唯一 |
+| `product_tags` | 商品与标签多对多，按 tag_id 反查 |
+| `product_options` | 定制项定义：TEXT/ENUM、必填、字数上限、加价 |
+| `order_item_options` | 下单时的定制项快照，参与订单行金额 |
+
+### 新增不变量
+
+1. 限量商品 `edition_no <= edition_size`；孤品 `is_unique = 1` 时库存上限为 1
+2. `Σ order_item_options.price_delta_cent` 计入该订单行 `subtotal_cent`
+3. 同一子单同一逾期天数只有一条赔付记录
+4. 售后单在同一子单上同时只能有一条未关闭记录
