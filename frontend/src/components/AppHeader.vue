@@ -16,11 +16,11 @@ function search() {
     <div class="container head__inner">
       <RouterLink to="/" class="brand">
         <span class="brand__mark">KD</span>
-        <span class="brand__text">手作市集</span>
+        <span class="brand__text">好物商城</span>
       </RouterLink>
 
       <nav class="nav">
-        <RouterLink to="/products">全部作品</RouterLink>
+        <RouterLink to="/products">全部商品</RouterLink>
         <a href="/#craft">按工艺</a>
         <a href="/#about">关于</a>
       </nav>

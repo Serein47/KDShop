@@ -4,6 +4,7 @@ export interface CategoryNode {
   id: number
   name: string
   sort: number
+  featured: boolean
   children: CategoryNode[]
 }
 

@@ -77,8 +77,9 @@ public class CatalogService {
         return all.stream()
                 .filter(c -> c.getParentId() == null)
                 .map(c -> new CategoryNode(c.getId(), c.getName(), c.getSort(),
+                        c.getFeatured() != null && c.getFeatured() == 1,
                         byParent.getOrDefault(c.getId(), List.of()).stream()
-                                .map(child -> new CategoryNode(child.getId(), child.getName(), child.getSort(), List.of()))
+                                .map(child -> new CategoryNode(child.getId(), child.getName(), child.getSort(), false, List.of()))
                                 .toList()))
                 .toList();
     }
