@@ -256,8 +256,8 @@ onMounted(async () => {
   cursor: pointer;
   transition: background 0.2s;
 }
-.cta:hover:not(:disabled) { background: var(--rust); }
-.cta:disabled { opacity: 0.35; cursor: not-allowed; }
+.cta:hover:not(:disabled) { background: var(--rust-dark); transform: translateY(-1px); }
+.cta:disabled { opacity: 0.55; cursor: not-allowed; box-shadow: none; }
 .hint { font-size: 12px; color: var(--muted); margin-top: 10px; }
 .story { margin-top: 88px; border-top: 1px solid var(--line); padding-top: 40px; max-width: 760px; }
 .story h2 { font-size: 26px; margin: 6px 0 16px; }
