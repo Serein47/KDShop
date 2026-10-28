@@ -17,3 +17,5 @@ mysql-data/
 minio-data/
 
 .pr-body.md
+
+.shots/

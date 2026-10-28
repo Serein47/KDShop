@@ -11,10 +11,11 @@ export default defineConfig({
     },
   },
   server: {
-    port: 5173,
+    port: Number(process.env.VITE_PORT ?? 5173),
     proxy: {
       '/api': {
-        target: 'http://127.0.0.1:8080',
+        // 可通过 VITE_API_TARGET 指向其它后端实例（默认本机 8080）
+        target: process.env.VITE_API_TARGET ?? 'http://127.0.0.1:8080',
         changeOrigin: true,
       },
     },
