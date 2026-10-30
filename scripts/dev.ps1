@@ -105,6 +105,32 @@ function Stop-PortOwner([int]$Port, [string]$Label) {
     if (-not (Get-PortPids $Port)) { Write-Ok "$Label 已停止" }
 }
 
+function Test-TcpPort([int]$Port, [int]$TimeoutMs = 1200) {
+    # 从 Windows 侧测端口（localhost 转发口是否真的通了，和容器内部 healthy 不是一回事）
+    $client = $null
+    try {
+        $client = New-Object System.Net.Sockets.TcpClient
+        $task = $client.ConnectAsync('127.0.0.1', $Port)
+        if (-not $task.Wait($TimeoutMs)) { return $false }
+        return $client.Connected
+    } catch { return $false } finally { if ($client) { $client.Close() } }
+}
+
+function Start-WslKeepAlive {
+    # WSL 会在一段时间没有客户端会话后自动停机（vmmem 消失、容器跟着死）。
+    # 挂一个 sleep infinity 会话把 VM 按住，直到 stop 时 wsl --shutdown。
+    $existing = Get-Process -Name wsl -ErrorAction SilentlyContinue
+    if ($existing) { Write-Host '  WSL 保活会话已存在'; return }
+    try {
+        Start-Process -FilePath 'wsl.exe' `
+            -ArgumentList '-d', $script:distro, '-u', 'root', '-e', 'sleep', 'infinity' `
+            -WindowStyle Hidden | Out-Null
+        Write-Host '  已挂 WSL 保活会话'
+    } catch {
+        Write-Warn2 "WSL 保活会话启动失败：$($_.Exception.Message)"
+    }
+}
+
 function Start-Infra {
     Write-Step '基础设施：WSL + docker compose'
 
@@ -123,6 +149,7 @@ function Start-Infra {
     $info = Get-WslInfo
     $script:distro = if ($info.Distro) { $info.Distro } else { $distroFallback }
     Write-Host "  WSL 发行版：$($script:distro)（$($info.State)）"
+    Start-WslKeepAlive
 
     $dockerReady = Wait-Until { (Invoke-Wsl 'docker info >/dev/null 2>&1').Code -eq 0 } 120 'docker daemon'
     if (-not $dockerReady) { return $false }
@@ -142,7 +169,11 @@ function Start-Infra {
         $all
     } 150 '四个容器 healthy'
     if (-not $healthy) { return $false }
-    Write-Ok 'MySQL :3307 / Redis :6380 / MinIO :9000,9001 / Mailpit :1025,8025 全部 healthy'
+
+    # 容器内部 healthy ≠ Windows 侧转发口已通；不等到握手成功，后端会抢跑报 Connection refused
+    $reachable = Wait-Until { (Test-TcpPort 3307) -and (Test-TcpPort 6380) } 40 '宿主侧 3307/6380 可连接'
+    if (-not $reachable) { Write-Fail '容器 healthy 但宿主端口不可连（WSL 转发没起来），先不启后端'; return $false }
+    Write-Ok 'MySQL :3307 / Redis :6380 / MinIO :9000,9001 / Mailpit :1025,8025 全部 healthy，宿主侧端口已通'
     return $true
 }
 
@@ -159,13 +190,28 @@ function Start-Backend {
         -WorkingDirectory $backendDir -WindowStyle Hidden `
         -RedirectStandardOutput $out -RedirectStandardError $err | Out-Null
 
-    $up = Wait-Until {
+    # 不等满 240 秒：一旦 mvn/Spring 明确失败就立刻收手，并把日志尾巴打出来
+    $deadline = (Get-Date).AddSeconds(240)
+    $up = $false
+    $crashed = $false
+    while ((Get-Date) -lt $deadline) {
         try {
             $r = Invoke-WebRequest -Uri "http://127.0.0.1:$backendPort/actuator/health" -UseBasicParsing -TimeoutSec 3
-            $r.StatusCode -eq 200
-        } catch { $false }
-    } 240 '后端 /actuator/health'
+            if ($r.StatusCode -eq 200) { $up = $true; break }
+        } catch { }
+        if (@(Get-PortPids $backendPort).Count -eq 0 -and (Test-Path $out)) {
+            $tail = Get-Content $out -Tail 30 -ErrorAction SilentlyContinue
+            if ($tail -match 'APPLICATION FAILED TO START|BUILD FAILURE|Process terminated with exit code') {
+                $crashed = $true
+                Write-Fail '后端启动即退出，日志尾部：'
+                ($tail | Select-Object -Last 20) | ForEach-Object { Write-Host "    $_" -ForegroundColor DarkGray }
+                break
+            }
+        }
+        Start-Sleep -Seconds 2
+    }
     if ($up) { Write-Ok "后端就绪 http://127.0.0.1:$backendPort （日志 logs\backend.log）" }
+    elseif (-not $crashed) { Write-Fail '后端 /actuator/health 在 240 秒内未就绪（日志 logs\backend.log）' }
     return $up
 }
 
