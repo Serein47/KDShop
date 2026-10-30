@@ -1,0 +1,15 @@
+import { chromium } from 'playwright-core';
+const base = 'http://localhost:5180';
+const browser = await chromium.launch({ channel: 'msedge', headless: true });
+const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
+await page.goto(base + '/login', { waitUntil: 'networkidle' });
+await page.click('button.submit');
+await page.waitForTimeout(1500);
+await page.goto(base + '/checkout', { waitUntil: 'networkidle' });
+await page.waitForTimeout(1500);
+await page.locator('.submit').click();
+await page.waitForTimeout(2500);
+console.log('url:', page.url());
+console.log('done text:', (await page.locator('.done').innerText().catch(() => 'no-done')).replace(/\n/g, ' | '));
+await page.screenshot({ path: 'D:/web-ai-code/KDShop/.shots/order-created.png' });
+await browser.close();

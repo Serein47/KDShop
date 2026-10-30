@@ -3,10 +3,13 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { createAddress, fetchAddresses, fetchPreview, type Address, type CheckoutPreview } from '@/api/checkout'
+import { createOrder } from '@/api/order'
+import { useCartStore } from '@/stores/cart'
 import { yuan } from '@/api/catalog'
 import { useAuthStore } from '@/stores/auth'
 
 const auth = useAuthStore()
+const cart = useCartStore()
 const router = useRouter()
 
 const preview = ref<CheckoutPreview | null>(null)
@@ -72,8 +75,24 @@ async function submitAddress() {
   }
 }
 
-function placeOrder() {
-  ElMessage.info('提交订单与支付将在下一版开放')
+const created = ref<{ orderNo: string; payAmount: number } | null>(null)
+
+async function placeOrder() {
+  if (!addressId.value || !preview.value) return
+  submitting.value = true
+  try {
+    const result = await createOrder(
+      { addressId: addressId.value, couponId: couponId.value },
+      crypto.randomUUID(),
+    )
+    created.value = { orderNo: result.orderNo, payAmount: result.payAmount }
+    await cart.load()
+    ElMessage.success('下单成功')
+  } catch (e: any) {
+    ElMessage.error(e?.response?.data?.message || '下单失败')
+  } finally {
+    submitting.value = false
+  }
 }
 </script>
 
@@ -88,6 +107,15 @@ function placeOrder() {
     </header>
 
     <div v-if="loading" class="state">正在计算金额…</div>
+
+    <div v-if="created" class="done">
+      <p class="eyebrow">Order created</p>
+      <h2>下单成功</h2>
+      <p class="done__no">{{ created.orderNo }}</p>
+      <p class="done__amount">应付 ¥{{ yuan(created.payAmount) }}</p>
+      <p class="done__hint">支付与订单详情将在下一版开放。</p>
+      <RouterLink to="/products" class="btn btn--solid">继续逛逛</RouterLink>
+    </div>
 
     <div v-else-if="preview" class="layout">
       <div class="main">
@@ -182,10 +210,10 @@ function placeOrder() {
         </div>
         <div class="row total"><span>应付</span><strong>¥{{ yuan(preview.summary.payAmount) }}</strong></div>
 
-        <button class="btn btn--solid submit" :disabled="!addressId" @click="placeOrder">
-          {{ addressId ? '提交订单' : '请选择收货地址' }}
+        <button class="btn btn--solid submit" :disabled="!addressId || submitting" @click="placeOrder">
+          {{ submitting ? '提交中…' : addressId ? '提交订单' : '请选择收货地址' }}
         </button>
-        <p class="hint">下单与支付在下一版开放；当前仅预览金额与拆单结果。</p>
+        <p class="hint">提交后会锁定库存并占用优惠券；支付在下一版开放。</p>
       </aside>
     </div>
   </div>
@@ -272,6 +300,19 @@ function placeOrder() {
 .submit { width: 100%; justify-content: center; margin-top: 18px; }
 .hint { font-size: 11px; color: var(--muted); margin-top: 10px; line-height: 1.6; }
 .state { padding: 90px 0; text-align: center; color: var(--muted); }
+.done {
+  max-width: 520px;
+  margin: 40px auto;
+  padding: 48px 32px;
+  background: #fff;
+  border-radius: 22px;
+  box-shadow: var(--shadow);
+  text-align: center;
+}
+.done h2 { font-size: 28px; margin: 8px 0 12px; }
+.done__no { font-family: var(--serif); font-size: 18px; letter-spacing: 0.04em; margin: 0 0 6px; }
+.done__amount { color: var(--rust); font-size: 22px; font-weight: 700; margin: 0 0 6px; }
+.done__hint { color: var(--muted); font-size: 13px; margin: 0 0 22px; }
 @media (max-width: 900px) {
   .layout { grid-template-columns: 1fr; }
   .summary { position: static; }
