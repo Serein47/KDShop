@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted } from 'vue'
-import { RouterLink } from 'vue-router'
+import { RouterLink, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { useCartStore } from '@/stores/cart'
 import { useAuthStore } from '@/stores/auth'
@@ -8,6 +8,7 @@ import { yuan } from '@/api/catalog'
 import ProductMedia from '@/components/ProductMedia.vue'
 
 const cart = useCartStore()
+const router = useRouter()
 const auth = useAuthStore()
 
 onMounted(async () => {
@@ -59,7 +60,13 @@ async function remove(item: Row) {
 }
 
 function checkout() {
-  ElMessage.info('结算与支付将在下一版开放')
+  if (!selectedRows.value.length) return
+  if (!cart.isServer) {
+    ElMessage.warning('请先登录再结算')
+    router.push({ path: '/login', query: { redirect: '/cart' } })
+    return
+  }
+  router.push('/checkout')
 }
 </script>
 
