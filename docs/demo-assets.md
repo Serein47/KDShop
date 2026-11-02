@@ -75,3 +75,11 @@ minimal product photography, centered, high detail, no text
 - 失败：1、3、7（HTTP 402 限流，重试耗尽）；重跑脚本会自动补齐
 - 风格：暖米色背景 + 柔和窗光，与站点配色一致
 - 链路：MinIO 公共桶 → `VITE_MEDIA_BASE` → 详情/列表渲染，均已实测
+
+## 决策（2026-11-02，暂停开发时记录）
+
+- **风格改为「电商白底」**：白色/浅灰背景、更强对比、商品带包装或完整外形，替换当前的暖米色场景光
+- 提示词后缀改为：`pure white background, soft shadow, studio product photo, high contrast, packaging visible, centered, no text`
+- 现有 14 个商品的主图是旧风格，需按新提示词重跑覆盖
+- 评价与销量由脚本基于真实订单生成，不抓取第三方
+- 剩余 16 个商品主图未生成（进程被手动停止）
