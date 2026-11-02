@@ -11,6 +11,7 @@ const router = createRouter({
     { path: '/cart', name: 'cart', component: () => import('@/views/shop/CartView.vue') },
     { path: '/login', name: 'login', component: () => import('@/views/shop/LoginView.vue') },
     { path: '/checkout', name: 'checkout', component: () => import('@/views/shop/CheckoutView.vue') },
+    { path: '/mock-pay/:paymentNo', name: 'mock-pay', component: () => import('@/views/shop/MockPayView.vue') },
     { path: '/:pathMatch(.*)*', name: 'not-found', component: () => import('@/views/shop/NotFoundView.vue') },
   ],
 })

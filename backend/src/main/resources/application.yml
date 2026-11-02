@@ -61,6 +61,8 @@ logging:
     com.kdshop: DEBUG
 
 kdshop:
+  payment:
+    secret: ${PAY_SECRET:dev-secret-change-me}
   meta:
     currency: CNY
     timezone: Asia/Shanghai
