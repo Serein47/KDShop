@@ -34,8 +34,11 @@ if ($Native) {
     & wsl -e docker cp "$src/." "$($Container):/tmp/assets"
 }
 
-Invoke-Docker "exec $Container mc cp --recursive --force /tmp/assets/ local/$Bucket/"
-Invoke-Docker "exec $Container rm -rf /tmp/assets"
+Invoke-Docker "exec $Container mc cp --recursive /tmp/assets/ local/$Bucket/"
+& wsl -e docker exec $Container sh -c "rm -rf /tmp/assets"
+
+$count = (& wsl -e docker exec $Container mc ls --recursive "local/$Bucket").Count
+Write-Host "桶内对象数：$count"
 
 Write-Host "已同步到 $Bucket"
 Write-Host "公共地址：http://localhost:9000/$Bucket/"
