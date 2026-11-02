@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.kdshop.common.BusinessException;
 import com.kdshop.common.ErrorCode;
 import com.kdshop.config.MetaProperties;
+import com.kdshop.order.OrderPaidService;
 import com.kdshop.order.mapper.OrderMapper;
 import com.kdshop.payment.entity.Payment;
 import com.kdshop.payment.mapper.PaymentMapper;
@@ -32,6 +33,7 @@ class PaymentServiceTest {
 
     @Mock private PaymentMapper paymentMapper;
     @Mock private OrderMapper orderMapper;
+    @Mock private OrderPaidService orderPaidService;
     @Mock private StringRedisTemplate redis;
     @Mock private ValueOperations<String, String> valueOps;
 
@@ -42,7 +44,7 @@ class PaymentServiceTest {
     @BeforeEach
     void setUp() {
         signer = new PaymentSigner("test-secret");
-        service = new PaymentService(paymentMapper, orderMapper, signer, redis, meta, new ObjectMapper());
+        service = new PaymentService(paymentMapper, orderMapper, signer, redis, meta, new ObjectMapper(), orderPaidService);
     }
 
     @Test

@@ -10,6 +10,7 @@ import com.kdshop.order.mapper.OrderMapper;
 import com.kdshop.payment.dto.PaymentView;
 import com.kdshop.payment.entity.Payment;
 import com.kdshop.payment.mapper.PaymentMapper;
+import com.kdshop.order.OrderPaidService;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -38,15 +39,18 @@ public class PaymentService {
     private final StringRedisTemplate redis;
     private final MetaProperties meta;
     private final ObjectMapper objectMapper;
+    private final OrderPaidService orderPaidService;
 
     public PaymentService(PaymentMapper paymentMapper, OrderMapper orderMapper, PaymentSigner signer,
-                          StringRedisTemplate redis, MetaProperties meta, ObjectMapper objectMapper) {
+                          StringRedisTemplate redis, MetaProperties meta, ObjectMapper objectMapper,
+                          OrderPaidService orderPaidService) {
         this.paymentMapper = paymentMapper;
         this.orderMapper = orderMapper;
         this.signer = signer;
         this.redis = redis;
         this.meta = meta;
         this.objectMapper = objectMapper;
+        this.orderPaidService = orderPaidService;
     }
 
     @Transactional
@@ -169,6 +173,9 @@ public class PaymentService {
             patch.setPaidAt(LocalDateTime.now());
         }
         paymentMapper.updateById(patch);
+        if ("SUCCESS".equals(patch.getStatus())) {
+            orderPaidService.markPaid(payment.getOrderId(), payment.getPaymentNo());
+        }
         return Map.of("code", 0, "message", "ok");
     }
 

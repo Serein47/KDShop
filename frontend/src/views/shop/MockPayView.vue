@@ -54,7 +54,7 @@ async function finish(success: boolean) {
           <p :class="['state', payment.status === 'SUCCESS' ? 'ok' : 'bad']">
             {{ payment.status === 'SUCCESS' ? '支付成功' : '支付失败' }}
           </p>
-          <p class="meta">订单状态更新将在下一版接入。</p>
+          <p class="meta">订单已转为「已付款」，库存已扣减。订单详情页在下一版开放。</p>
           <RouterLink to="/products" class="btn btn--ghost">返回商城</RouterLink>
         </div>
 

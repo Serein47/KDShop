@@ -4,7 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.kdshop.auth.entity.AuthToken;
 import com.kdshop.auth.entity.User;
 import com.kdshop.auth.mapper.AuthTokenMapper;
-import com.kdshop.auth.mapper.EmailOutboxMapper;
+import com.kdshop.mail.mapper.EmailOutboxMapper;
 import com.kdshop.auth.mapper.UserMapper;
 import com.kdshop.common.BusinessException;
 import com.kdshop.common.ErrorCode;

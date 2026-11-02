@@ -5,7 +5,7 @@ import com.kdshop.auth.dto.LoginRequest;
 import com.kdshop.auth.dto.RegisterRequest;
 import com.kdshop.auth.entity.User;
 import com.kdshop.auth.mapper.AuthTokenMapper;
-import com.kdshop.auth.mapper.EmailOutboxMapper;
+import com.kdshop.mail.mapper.EmailOutboxMapper;
 import com.kdshop.auth.mapper.RoleMapper;
 import com.kdshop.auth.mapper.UserMapper;
 import com.kdshop.auth.mapper.UserRoleMapper;
