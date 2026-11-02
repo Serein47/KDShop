@@ -48,7 +48,9 @@ public class SecurityConfig {
         http
                 .csrf(csrf -> csrf
                         .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
-                        .csrfTokenRequestHandler(new CsrfTokenRequestAttributeHandler()))
+                        .csrfTokenRequestHandler(new CsrfTokenRequestAttributeHandler())
+                        // 网关到平台的回调是服务端到服务端，靠签名而不是 CSRF
+                        .ignoringRequestMatchers("/api/v1/payments/callback/mock"))
                 .securityContext(context -> context.securityContextRepository(securityContextRepository))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(
@@ -59,6 +61,7 @@ public class SecurityConfig {
                                 "/api/v1/auth/resend-verification",
                                 "/api/v1/auth/forgot-password",
                                 "/api/v1/auth/reset-password",
+                                "/api/v1/payments/callback/mock",
                                 "/api/v1/meta",
                                 "/api/v1/categories",
                                 "/api/v1/tags",

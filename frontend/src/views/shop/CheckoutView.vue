@@ -4,6 +4,7 @@ import { RouterLink, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { createAddress, fetchAddresses, fetchPreview, type Address, type CheckoutPreview } from '@/api/checkout'
 import { createOrder } from '@/api/order'
+import { createPayment } from '@/api/payment'
 import { useCartStore } from '@/stores/cart'
 import { yuan } from '@/api/catalog'
 import { useAuthStore } from '@/stores/auth'
@@ -55,6 +56,19 @@ onMounted(async () => {
 
 watch([addressId, couponId], () => load())
 
+async function goPay() {
+  if (!created.value) return
+  paying.value = true
+  try {
+    const payment = await createPayment(created.value.orderNo)
+    router.push(payment.payUrl)
+  } catch (e: any) {
+    ElMessage.error(e?.response?.data?.message || '创建支付失败')
+  } finally {
+    paying.value = false
+  }
+}
+
 async function submitAddress() {
   if (!form.value.receiver || !form.value.phone || !form.value.detail) {
     ElMessage.warning('请填写收货人、手机号与详细地址')
@@ -76,6 +90,7 @@ async function submitAddress() {
 }
 
 const created = ref<{ orderNo: string; payAmount: number } | null>(null)
+const paying = ref(false)
 
 async function placeOrder() {
   if (!addressId.value || !preview.value) return
@@ -113,8 +128,9 @@ async function placeOrder() {
       <h2>下单成功</h2>
       <p class="done__no">{{ created.orderNo }}</p>
       <p class="done__amount">应付 ¥{{ yuan(created.payAmount) }}</p>
-      <p class="done__hint">支付与订单详情将在下一版开放。</p>
-      <RouterLink to="/products" class="btn btn--solid">继续逛逛</RouterLink>
+      <p class="done__hint">订单已生成，去支付即可完成流程。</p>
+      <button class="btn btn--solid" :disabled="paying" @click="goPay">去支付</button>
+      <RouterLink to="/products" class="btn btn--ghost">继续逛逛</RouterLink>
     </div>
 
     <div v-else-if="preview" class="layout">
