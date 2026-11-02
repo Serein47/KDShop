@@ -13,4 +13,9 @@ public interface SkuMapper extends BaseMapper<Sku> {
     @Update("UPDATE skus SET locked_stock = locked_stock + #{qty} " +
             "WHERE id = #{id} AND stock - locked_stock >= #{qty}")
     int lockStock(@Param("id") Long id, @Param("qty") int qty);
+
+    /** 支付成功：把锁定的库存转为实扣。 */
+    @Update("UPDATE skus SET stock = stock - #{qty}, locked_stock = locked_stock - #{qty} " +
+            "WHERE id = #{id} AND stock >= #{qty} AND locked_stock >= #{qty}")
+    int deductStock(@Param("id") Long id, @Param("qty") int qty);
 }
