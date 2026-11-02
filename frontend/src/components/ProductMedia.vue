@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import { mediaUrl } from '@/api/media'
 
 const props = defineProps<{ name: string; image?: string; seed?: number; ratio?: string }>()
 
@@ -18,11 +19,12 @@ const style = computed(() => {
 })
 
 const glyph = computed(() => (props.name ?? '手').trim().charAt(0))
+const src = computed(() => mediaUrl(props.image))
 </script>
 
 <template>
   <div class="media" :style="[{ ...style }, ratio ? { aspectRatio: ratio } : {}]">
-    <img v-if="image" :src="image" :alt="name" class="media__img" />
+    <img v-if="src" :src="src" :alt="name" class="media__img" loading="lazy" />
     <span v-else class="media__glyph">{{ glyph }}</span>
     <span class="media__grain" />
   </div>

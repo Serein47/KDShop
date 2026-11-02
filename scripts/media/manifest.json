@@ -1,0 +1,337 @@
+{
+  "note": "演示素材清单。图片不入库，只保留本清单与来源信息。",
+  "source": "Pexels",
+  "count_per_product": 3,
+  "products": [
+    {
+      "id": 1,
+      "name": "粗陶马克杯",
+      "pilot": true,
+      "count": 3,
+      "queries": [
+        "ceramic mug",
+        "pottery mug",
+        "handmade ceramics"
+      ]
+    },
+    {
+      "id": 2,
+      "name": "亚麻餐垫",
+      "pilot": false,
+      "count": 3,
+      "queries": [
+        "linen placemat",
+        "table linen",
+        "fabric texture"
+      ]
+    },
+    {
+      "id": 3,
+      "name": "胡桃木托盘",
+      "pilot": true,
+      "count": 3,
+      "queries": [
+        "wooden tray",
+        "walnut wood",
+        "serving board"
+      ]
+    },
+    {
+      "id": 4,
+      "name": "黄铜书签",
+      "pilot": false,
+      "count": 3,
+      "queries": [
+        "brass bookmark",
+        "metal bookmark",
+        "brass stationery"
+      ]
+    },
+    {
+      "id": 5,
+      "name": "雪松香薰蜡烛",
+      "pilot": true,
+      "count": 3,
+      "queries": [
+        "scented candle",
+        "candle jar",
+        "cedar candle"
+      ]
+    },
+    {
+      "id": 6,
+      "name": "手工皂礼盒",
+      "pilot": false,
+      "count": 3,
+      "queries": [
+        "handmade soap",
+        "soap bar",
+        "soap gift box"
+      ]
+    },
+    {
+      "id": 7,
+      "name": "粗陶花器",
+      "pilot": true,
+      "count": 3,
+      "queries": [
+        "ceramic vase",
+        "pottery vase",
+        "stoneware vase"
+      ]
+    },
+    {
+      "id": 8,
+      "name": "手工玻璃杯",
+      "pilot": false,
+      "count": 3,
+      "queries": [
+        "glass cup",
+        "handmade glass",
+        "drinking glass"
+      ]
+    },
+    {
+      "id": 9,
+      "name": "刻字胡桃木盒",
+      "pilot": false,
+      "count": 3,
+      "queries": [
+        "wooden box",
+        "engraved wood box",
+        "keepsake box"
+      ]
+    },
+    {
+      "id": 10,
+      "name": "纸艺台灯",
+      "pilot": false,
+      "count": 3,
+      "queries": [
+        "paper lamp",
+        "table lamp",
+        "warm lamp light"
+      ]
+    },
+    {
+      "id": 11,
+      "name": "手账本 · 棉麻封面",
+      "pilot": true,
+      "count": 3,
+      "queries": [
+        "notebook",
+        "journal notebook",
+        "stationery"
+      ]
+    },
+    {
+      "id": 12,
+      "name": "黄铜笔搁",
+      "pilot": false,
+      "count": 3,
+      "queries": [
+        "pen rest",
+        "brass pen",
+        "desk stationery"
+      ]
+    },
+    {
+      "id": 13,
+      "name": "亚麻桌旗",
+      "pilot": false,
+      "count": 3,
+      "queries": [
+        "linen table runner",
+        "table setting",
+        "linen"
+      ]
+    },
+    {
+      "id": 14,
+      "name": "帆布托特包",
+      "pilot": true,
+      "count": 3,
+      "queries": [
+        "canvas tote bag",
+        "tote bag",
+        "cotton bag"
+      ]
+    },
+    {
+      "id": 15,
+      "name": "燕麦手工皂",
+      "pilot": false,
+      "count": 3,
+      "queries": [
+        "oatmeal soap",
+        "natural soap",
+        "soap bars"
+      ]
+    },
+    {
+      "id": 16,
+      "name": "香氛礼盒",
+      "pilot": false,
+      "count": 3,
+      "queries": [
+        "fragrance gift set",
+        "perfume gift",
+        "gift set box"
+      ]
+    },
+    {
+      "id": 17,
+      "name": "皮面笔记本",
+      "pilot": false,
+      "count": 3,
+      "queries": [
+        "leather notebook",
+        "leather journal",
+        "notebook cover"
+      ]
+    },
+    {
+      "id": 18,
+      "name": "黄铜蘸水笔",
+      "pilot": false,
+      "count": 3,
+      "queries": [
+        "dip pen",
+        "calligraphy pen",
+        "brass pen"
+      ]
+    },
+    {
+      "id": 19,
+      "name": "手编羊毛地毯",
+      "pilot": false,
+      "count": 3,
+      "queries": [
+        "wool rug",
+        "woven rug",
+        "carpet texture"
+      ]
+    },
+    {
+      "id": 20,
+      "name": "折叠木凳",
+      "pilot": false,
+      "count": 3,
+      "queries": [
+        "wooden stool",
+        "folding stool",
+        "wood furniture"
+      ]
+    },
+    {
+      "id": 21,
+      "name": "天然苏打水 6 瓶",
+      "pilot": true,
+      "count": 3,
+      "queries": [
+        "sparkling water",
+        "mineral water bottle",
+        "soda bottle"
+      ]
+    },
+    {
+      "id": 22,
+      "name": "挂耳咖啡 10 包",
+      "pilot": false,
+      "count": 3,
+      "queries": [
+        "drip coffee",
+        "coffee bag",
+        "coffee beans"
+      ]
+    },
+    {
+      "id": 23,
+      "name": "65W 氮化镓充电头",
+      "pilot": true,
+      "count": 3,
+      "queries": [
+        "usb charger",
+        "power adapter",
+        "gan charger"
+      ]
+    },
+    {
+      "id": 24,
+      "name": "磁吸手机壳",
+      "pilot": false,
+      "count": 3,
+      "queries": [
+        "phone case",
+        "magsafe case",
+        "phone cover"
+      ]
+    },
+    {
+      "id": 25,
+      "name": "纯棉白 T",
+      "pilot": true,
+      "count": 3,
+      "queries": [
+        "white t-shirt",
+        "cotton tshirt",
+        "folded tshirt"
+      ]
+    },
+    {
+      "id": 26,
+      "name": "帆布一脚蹬",
+      "pilot": false,
+      "count": 3,
+      "queries": [
+        "canvas sneakers",
+        "slip on shoes",
+        "canvas shoes"
+      ]
+    },
+    {
+      "id": 27,
+      "name": "氨基酸洁面",
+      "pilot": false,
+      "count": 3,
+      "queries": [
+        "face cleanser",
+        "skincare bottle",
+        "face wash"
+      ]
+    },
+    {
+      "id": 28,
+      "name": "中性笔 10 支装",
+      "pilot": false,
+      "count": 3,
+      "queries": [
+        "gel pen",
+        "ballpoint pen",
+        "pens stationery"
+      ]
+    },
+    {
+      "id": 29,
+      "name": "露营灯",
+      "pilot": true,
+      "count": 3,
+      "queries": [
+        "camping lantern",
+        "lantern light",
+        "outdoor lamp"
+      ]
+    },
+    {
+      "id": 30,
+      "name": "木质积木 50 粒",
+      "pilot": false,
+      "count": 3,
+      "queries": [
+        "wooden blocks",
+        "building blocks",
+        "wooden toy"
+      ]
+    }
+  ]
+}

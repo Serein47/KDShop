@@ -8,6 +8,7 @@ public record ProductDetailView(
         String name,
         String subtitle,
         String description,
+        String mainImage,
         List<String> images,
         Long categoryId,
         String categoryName,

@@ -19,3 +19,7 @@ minio-data/
 .pr-body.md
 
 .shots/
+
+# 演示素材（图片不入库，只保留 manifest 与来源信息）
+infra/demo-assets/images/
+scripts/media/resolved.json

@@ -180,6 +180,7 @@ public class CatalogService {
 
         return new ProductDetailView(
                 product.getId(), product.getName(), product.getSubtitle(), product.getDescription(),
+                product.getMainImage(),
                 readList(product.getImagesJson()),
                 product.getCategoryId(),
                 categoryMapper.selectById(product.getCategoryId()) == null
