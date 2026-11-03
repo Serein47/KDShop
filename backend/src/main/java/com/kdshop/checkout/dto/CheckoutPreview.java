@@ -24,6 +24,7 @@ public record CheckoutPreview(
             Long skuId,
             Long productId,
             String name,
+            String image,
             Map<String, String> spec,
             int price,
             int quantity,
