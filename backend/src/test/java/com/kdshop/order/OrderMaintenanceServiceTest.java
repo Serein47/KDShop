@@ -1,6 +1,7 @@
 package com.kdshop.order;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.kdshop.auth.mapper.UserMapper;
 import com.kdshop.catalog.mapper.SkuMapper;
 import com.kdshop.checkout.mapper.UserCouponMapper;
 import com.kdshop.config.MetaProperties;
@@ -43,6 +44,7 @@ class OrderMaintenanceServiceTest {
     @Mock private EmailOutboxMapper emailOutboxMapper;
     @Mock private TransactionTemplate tx;
     @Mock private TransactionStatus txStatus;
+    @Mock private UserMapper userMapper;
 
     private OrderMaintenanceService service;
     private final MetaProperties meta = new MetaProperties("CNY", "Asia/Shanghai", 9900, 1000, 15, 7, 7);
@@ -50,7 +52,7 @@ class OrderMaintenanceServiceTest {
     @BeforeEach
     void setUp() {
         service = new OrderMaintenanceService(orderMapper, merchantOrderMapper, orderItemMapper, skuMapper,
-                userCouponMapper, statusLogMapper, emailOutboxMapper, meta, tx, new ObjectMapper());
+                userCouponMapper, statusLogMapper, emailOutboxMapper, meta, tx, new ObjectMapper(), userMapper);
         lenient().when(tx.execute(any())).thenAnswer(invocation -> {
             TransactionCallback<?> callback = invocation.getArgument(0);
             return callback.doInTransaction(txStatus);

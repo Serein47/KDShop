@@ -100,7 +100,7 @@ erDiagram
 | `user_coupons` | id, user_id, coupon_id, status(UNUSED/USED/EXPIRED), order_id, used_at | `uk_user_coupons`(user_id, coupon_id) |
 | `favorites` | id, user_id, product_id | `uk_favorites`(user_id, product_id) |
 | `reviews` | id, order_item_id, user_id, product_id, merchant_id, rating, content, status(VISIBLE/HIDDEN) | `uk_reviews_item` |
-| `email_outbox` | id, to_email, template, biz_key, payload_json, status(PENDING/SENT/FAILED), error, sent_at | `uk_outbox_biz_key` |
+| `email_outbox` | id, to_email, template, biz_key, payload_json, status(PENDING/SENT/FAILED), error, attempts, next_retry_at, sent_at | `uk_outbox_biz_key`、`idx_outbox_retry` |
 | `audit_logs` | id, actor_type, actor_id, action, target_type, target_id, before_json, after_json, ip | `idx_audit_actor`、`idx_audit_target` |
 
 ## 关键约束与不变量

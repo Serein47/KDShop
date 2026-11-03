@@ -2,14 +2,11 @@ package com.kdshop.order;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.kdshop.auth.entity.User;
-import com.kdshop.auth.mapper.UserMapper;
 import com.kdshop.catalog.mapper.SkuMapper;
 import com.kdshop.common.BusinessException;
 import com.kdshop.common.ErrorCode;
-import com.kdshop.mail.entity.EmailOutbox;
-import com.kdshop.mail.mapper.EmailOutboxMapper;
+import com.kdshop.mail.MailOutboxWriter;
+import com.kdshop.mail.MailTemplateType;
 import com.kdshop.order.entity.MerchantOrder;
 import com.kdshop.order.entity.Order;
 import com.kdshop.order.entity.OrderItem;
@@ -21,7 +18,9 @@ import com.kdshop.order.mapper.OrderStatusLogMapper;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
 
@@ -32,27 +31,24 @@ import java.util.Map;
 @Service
 public class OrderPaidService {
 
+    private static final DateTimeFormatter MAIL_TIME = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
+
     private final OrderMapper orderMapper;
     private final MerchantOrderMapper merchantOrderMapper;
     private final OrderItemMapper orderItemMapper;
     private final SkuMapper skuMapper;
     private final OrderStatusLogMapper statusLogMapper;
-    private final EmailOutboxMapper emailOutboxMapper;
-    private final ObjectMapper objectMapper;
-    private final UserMapper userMapper;
+    private final MailOutboxWriter mailOutboxWriter;
 
     public OrderPaidService(OrderMapper orderMapper, MerchantOrderMapper merchantOrderMapper,
                             OrderItemMapper orderItemMapper, SkuMapper skuMapper,
-                            OrderStatusLogMapper statusLogMapper, EmailOutboxMapper emailOutboxMapper,
-                            ObjectMapper objectMapper, UserMapper userMapper) {
+                            OrderStatusLogMapper statusLogMapper, MailOutboxWriter mailOutboxWriter) {
         this.orderMapper = orderMapper;
         this.merchantOrderMapper = merchantOrderMapper;
         this.orderItemMapper = orderItemMapper;
         this.skuMapper = skuMapper;
         this.statusLogMapper = statusLogMapper;
-        this.emailOutboxMapper = emailOutboxMapper;
-        this.objectMapper = objectMapper;
-        this.userMapper = userMapper;
+        this.mailOutboxWriter = mailOutboxWriter;
     }
 
     @Transactional
@@ -99,25 +95,17 @@ public class OrderPaidService {
         log.setReason("payment:" + paymentNo);
         statusLogMapper.insert(log);
 
-        EmailOutbox outbox = new EmailOutbox();
-        outbox.setToEmail(resolveEmail(order));
-        outbox.setTemplate("PAYMENT_SUCCESS");
-        outbox.setBizKey("payment_success:" + paymentNo);
-        outbox.setStatus("PENDING");
-        try {
-            outbox.setPayloadJson(objectMapper.writeValueAsString(Map.of(
-                    "orderNo", order.getOrderNo(),
-                    "paidAmount", order.getPayAmountCent(),
-                    "paidAt", now.toString())));
-        } catch (Exception e) {
-            outbox.setPayloadJson("{}");
-        }
-        emailOutboxMapper.insert(outbox);
+        mailOutboxWriter.enqueueToUser(order.getUserId(), MailTemplateType.PAYMENT_SUCCESS,
+                "payment_success:" + paymentNo,
+                Map.of(
+                        "orderNo", order.getOrderNo(),
+                        "paidAmount", money(order.getPayAmountCent()),
+                        "paidAt", now.format(MAIL_TIME),
+                        "orderUrl", "/orders/" + order.getOrderNo()));
         return true;
     }
 
-    private String resolveEmail(Order order) {
-        User user = userMapper.selectById(order.getUserId());
-        return user == null ? "unknown@kdshop.local" : user.getEmail();
+    private String money(int cents) {
+        return BigDecimal.valueOf(cents, 2).toPlainString();
     }
 }

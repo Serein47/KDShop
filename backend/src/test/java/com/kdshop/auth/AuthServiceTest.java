@@ -1,16 +1,15 @@
 package com.kdshop.auth;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.kdshop.auth.dto.LoginRequest;
 import com.kdshop.auth.dto.RegisterRequest;
 import com.kdshop.auth.entity.User;
 import com.kdshop.auth.mapper.AuthTokenMapper;
-import com.kdshop.mail.mapper.EmailOutboxMapper;
 import com.kdshop.auth.mapper.RoleMapper;
 import com.kdshop.auth.mapper.UserMapper;
 import com.kdshop.auth.mapper.UserRoleMapper;
 import com.kdshop.common.BusinessException;
 import com.kdshop.common.ErrorCode;
+import com.kdshop.mail.MailOutboxWriter;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -35,7 +34,7 @@ class AuthServiceTest {
     @Mock private RoleMapper roleMapper;
     @Mock private UserRoleMapper userRoleMapper;
     @Mock private AuthTokenMapper authTokenMapper;
-    @Mock private EmailOutboxMapper emailOutboxMapper;
+    @Mock private MailOutboxWriter mailOutboxWriter;
     @Mock private PasswordEncoder passwordEncoder;
     @Mock private StringRedisTemplate redis;
     @Mock private ValueOperations<String, String> valueOps;
@@ -46,7 +45,7 @@ class AuthServiceTest {
     @BeforeEach
     void setUp() {
         authService = new AuthService(userMapper, roleMapper, userRoleMapper, authTokenMapper,
-                emailOutboxMapper, passwordEncoder, redis, securityContextRepository, new ObjectMapper());
+                mailOutboxWriter, passwordEncoder, redis, securityContextRepository);
     }
 
     @Test

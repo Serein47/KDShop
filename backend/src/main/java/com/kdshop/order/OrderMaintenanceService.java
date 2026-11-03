@@ -3,6 +3,8 @@ package com.kdshop.order;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.kdshop.auth.entity.User;
+import com.kdshop.auth.mapper.UserMapper;
 import com.kdshop.catalog.mapper.SkuMapper;
 import com.kdshop.checkout.entity.UserCoupon;
 import com.kdshop.checkout.mapper.UserCouponMapper;
@@ -46,12 +48,13 @@ public class OrderMaintenanceService {
     private final MetaProperties meta;
     private final TransactionTemplate tx;
     private final ObjectMapper objectMapper;
+    private final UserMapper userMapper;
 
     public OrderMaintenanceService(OrderMapper orderMapper, MerchantOrderMapper merchantOrderMapper,
                                    OrderItemMapper orderItemMapper, SkuMapper skuMapper,
                                    UserCouponMapper userCouponMapper, OrderStatusLogMapper statusLogMapper,
                                    EmailOutboxMapper emailOutboxMapper, MetaProperties meta,
-                                   TransactionTemplate tx, ObjectMapper objectMapper) {
+                                   TransactionTemplate tx, ObjectMapper objectMapper, UserMapper userMapper) {
         this.orderMapper = orderMapper;
         this.merchantOrderMapper = merchantOrderMapper;
         this.orderItemMapper = orderItemMapper;
@@ -62,6 +65,7 @@ public class OrderMaintenanceService {
         this.meta = meta;
         this.tx = tx;
         this.objectMapper = objectMapper;
+        this.userMapper = userMapper;
     }
 
     @Scheduled(fixedDelayString = "${kdshop.jobs.scan-interval-ms:60000}", initialDelay = 20000)
@@ -129,13 +133,17 @@ public class OrderMaintenanceService {
         statusLogMapper.insert(logRow);
 
         EmailOutbox outbox = new EmailOutbox();
-        outbox.setToEmail("order-" + order.getId() + "@kdshop.local");
+        User user = userMapper.selectById(order.getUserId());
+        outbox.setToEmail(user == null ? "unknown@kdshop.local" : user.getEmail());
         outbox.setTemplate("ORDER_CANCELLED");
         outbox.setBizKey("order_cancelled:" + order.getOrderNo());
         outbox.setStatus("PENDING");
         try {
             outbox.setPayloadJson(objectMapper.writeValueAsString(Map.of(
-                    "orderNo", order.getOrderNo(), "reason", "PAY_TIMEOUT")));
+                    "orderNo", order.getOrderNo(),
+                    "reason", "超时未支付",
+                    "cancelledAt", now.toString(),
+                    "orderUrl", "/orders/" + order.getOrderNo())));
         } catch (Exception e) {
             outbox.setPayloadJson("{}");
         }

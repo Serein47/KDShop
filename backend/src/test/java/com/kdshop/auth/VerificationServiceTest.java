@@ -1,13 +1,12 @@
 package com.kdshop.auth;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.kdshop.auth.entity.AuthToken;
 import com.kdshop.auth.entity.User;
 import com.kdshop.auth.mapper.AuthTokenMapper;
-import com.kdshop.mail.mapper.EmailOutboxMapper;
 import com.kdshop.auth.mapper.UserMapper;
 import com.kdshop.common.BusinessException;
 import com.kdshop.common.ErrorCode;
+import com.kdshop.mail.MailOutboxWriter;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
 import org.junit.jupiter.api.BeforeEach;
@@ -36,7 +35,7 @@ class VerificationServiceTest {
 
     @Mock private UserMapper userMapper;
     @Mock private AuthTokenMapper authTokenMapper;
-    @Mock private EmailOutboxMapper emailOutboxMapper;
+    @Mock private MailOutboxWriter mailOutboxWriter;
     @Mock private PasswordEncoder passwordEncoder;
     @Mock private StringRedisTemplate redis;
     @Mock private SetOperations<String, String> setOps;
@@ -48,8 +47,8 @@ class VerificationServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new VerificationService(userMapper, authTokenMapper, emailOutboxMapper,
-                passwordEncoder, redis, sessionRepository, new ObjectMapper());
+        service = new VerificationService(userMapper, authTokenMapper, mailOutboxWriter,
+                passwordEncoder, redis, sessionRepository);
     }
 
     @Test
