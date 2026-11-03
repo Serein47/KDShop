@@ -48,6 +48,9 @@ public enum ErrorCode {
     SUB_ORDER_STATE_INVALID(40019, "子单当前状态不允许该操作", HttpStatus.CONFLICT),
     SETTLEMENT_EXISTS(40020, "该商家该周期已生成结算单", HttpStatus.CONFLICT),
     SETTLEMENT_NOT_ELIGIBLE(40021, "子单未满足结算条件", HttpStatus.CONFLICT),
+    SHOP_NOT_FOUND(40022, "店铺不存在", HttpStatus.NOT_FOUND),
+    SHOP_NAME_TAKEN(40023, "店铺名称已被使用", HttpStatus.CONFLICT),
+    SHOP_STATE_INVALID(40024, "店铺当前状态不允许该操作", HttpStatus.CONFLICT),
 
     INTERNAL_ERROR(50001, "系统繁忙，请稍后再试", HttpStatus.INTERNAL_SERVER_ERROR),
     UPSTREAM_TIMEOUT(50002, "下游服务超时", HttpStatus.GATEWAY_TIMEOUT);

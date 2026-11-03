@@ -45,6 +45,11 @@ function search() {
         <span v-if="cart.count" class="cart-badge">{{ cart.count }}</span>
       </RouterLink>
 
+      <RouterLink v-if="auth.user" to="/merchant/apply" class="merchant-link">
+        {{ auth.hasRole('MERCHANT') ? '商家中心' : '商家入驻' }}
+      </RouterLink>
+      <RouterLink v-if="auth.hasRole('ADMIN')" to="/admin/merchants" class="merchant-link">商家审核</RouterLink>
+
       <div class="auth">
         <RouterLink v-if="!auth.user" to="/login" class="login-link">登录</RouterLink>
         <template v-else>
@@ -141,6 +146,8 @@ function search() {
   line-height: 18px;
   text-align: center;
 }
+.merchant-link { font-size: 13px; color: var(--muted); padding: 6px 10px; border-radius: 999px; }
+.merchant-link:hover { color: var(--rust); }
 .auth { display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--muted); }
 .login-link { padding: 6px 14px; border: 1px solid var(--line); border-radius: 999px; color: var(--ink-soft); }
 .login-link:hover { border-color: var(--rust); color: var(--rust); }
