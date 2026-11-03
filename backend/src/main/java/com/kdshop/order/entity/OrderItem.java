@@ -19,6 +19,7 @@ public class OrderItem {
     private Long skuId;
     private Long productId;
     private String productName;
+    private String productImage;
     private String shopName;
     private String skuSpec;
     private Integer unitPriceCent;

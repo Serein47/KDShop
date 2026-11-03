@@ -42,6 +42,7 @@ public record OrderDetailView(
 
     public record ItemView(
             String name,
+            String image,
             Map<String, String> spec,
             int price,
             int quantity,

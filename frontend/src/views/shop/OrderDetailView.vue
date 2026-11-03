@@ -12,6 +12,7 @@ import {
 import { createPayment } from '@/api/payment'
 import { useAuthStore } from '@/stores/auth'
 import { yuan } from '@/api/catalog'
+import { mediaUrl } from '@/api/media'
 import {
   formatDateTime,
   isCancellable,
@@ -197,7 +198,10 @@ function actorLabel(actor: string): string {
 
             <div class="items">
               <div v-for="(item, index) in sub.items" :key="`${item.name}-${index}`" class="item">
-                <span class="item__mark">{{ item.name.slice(0, 1) }}</span>
+                <span class="item__mark">
+          <img v-if="item.image" :src="mediaUrl(item.image)" :alt="item.name" />
+          <template v-else>{{ item.name.slice(0, 1) }}</template>
+        </span>
                 <div class="item__main">
                   <p>{{ item.name }}</p>
                   <span>{{ specText(item.spec) }} · ¥{{ yuan(item.price) }} × {{ item.quantity }}</span>
@@ -331,6 +335,13 @@ function actorLabel(actor: string): string {
 
 .items { display: grid; gap: 2px; border-top: 1px solid var(--line); }
 .item { display: flex; align-items: center; gap: 14px; padding: 14px 0; border-bottom: 1px solid var(--line); }
+.item__mark img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 8px;
+  display: block;
+}
 .item__mark {
   display: grid; place-items: center;
   width: 46px; height: 46px; flex: none;

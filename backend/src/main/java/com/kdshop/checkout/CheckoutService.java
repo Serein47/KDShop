@@ -121,6 +121,7 @@ public class CheckoutService {
             List<CheckoutPreview.Line> lines = groupRows.stream()
                     .map(row -> new CheckoutPreview.Line(
                             row.sku().getId(), row.product().getId(), row.product().getName(),
+                            row.product().getMainImage(),
                             readMap(row.sku().getSpecJson()), row.sku().getPriceCent(),
                             row.quantity(), row.sku().getPriceCent() * row.quantity()))
                     .toList();

@@ -113,7 +113,7 @@ class OrderServiceTest {
     }
 
     private CheckoutPreview preview() {
-        CheckoutPreview.Line line = new CheckoutPreview.Line(1L, 1L, "粗陶马克杯", Map.of("颜色", "米白"),
+        CheckoutPreview.Line line = new CheckoutPreview.Line(1L, 1L, "粗陶马克杯", "products/1/1.jpg", Map.of("颜色", "米白"),
                 12800, 2, 25600);
         CheckoutPreview.SubOrder sub = new CheckoutPreview.SubOrder(1L, "山野杂货", List.of(line),
                 25600, 0, 0, 25600);

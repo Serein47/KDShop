@@ -149,6 +149,7 @@ public class OrderService {
                 item.setSkuId(line.skuId());
                 item.setProductId(line.productId());
                 item.setProductName(line.name());
+                item.setProductImage(line.image());
                 item.setShopName(sub.shopName());
                 item.setSkuSpec(writeJson(line.spec()));
                 item.setUnitPriceCent(line.price());
