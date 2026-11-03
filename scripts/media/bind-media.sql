@@ -1,13 +1,30 @@
--- 把已上传的图片绑定到商品；key 存相对路径，渲染时拼 VITE_MEDIA_BASE
--- 当前有效：11, 14, 21, 23, 25, 29, 5
-
-UPDATE products SET main_image='products/11/1.jpg', images_json=JSON_ARRAY('products/11/1.jpg') WHERE id=11;
-UPDATE products SET main_image='products/14/1.jpg', images_json=JSON_ARRAY('products/14/1.jpg') WHERE id=14;
-UPDATE products SET main_image='products/21/1.jpg', images_json=JSON_ARRAY('products/21/1.jpg') WHERE id=21;
-UPDATE products SET main_image='products/23/1.jpg', images_json=JSON_ARRAY('products/23/1.jpg') WHERE id=23;
-UPDATE products SET main_image='products/25/1.jpg', images_json=JSON_ARRAY('products/25/1.jpg') WHERE id=25;
-UPDATE products SET main_image='products/29/1.jpg', images_json=JSON_ARRAY('products/29/1.jpg') WHERE id=29;
+﻿UPDATE products SET main_image='products/1/1.jpg', images_json=JSON_ARRAY('products/1/1.jpg') WHERE id=1;
+UPDATE products SET main_image='products/2/1.jpg', images_json=JSON_ARRAY('products/2/1.jpg') WHERE id=2;
+UPDATE products SET main_image='products/3/1.jpg', images_json=JSON_ARRAY('products/3/1.jpg') WHERE id=3;
+UPDATE products SET main_image='products/4/1.jpg', images_json=JSON_ARRAY('products/4/1.jpg') WHERE id=4;
 UPDATE products SET main_image='products/5/1.jpg', images_json=JSON_ARRAY('products/5/1.jpg') WHERE id=5;
-UPDATE products SET main_image=NULL, images_json=NULL WHERE id=1;
-UPDATE products SET main_image=NULL, images_json=NULL WHERE id=3;
-UPDATE products SET main_image=NULL, images_json=NULL WHERE id=7;
+UPDATE products SET main_image='products/6/1.jpg', images_json=JSON_ARRAY('products/6/1.jpg') WHERE id=6;
+UPDATE products SET main_image='products/7/1.jpg', images_json=JSON_ARRAY('products/7/1.jpg') WHERE id=7;
+UPDATE products SET main_image='products/8/1.jpg', images_json=JSON_ARRAY('products/8/1.jpg') WHERE id=8;
+UPDATE products SET main_image='products/9/1.jpg', images_json=JSON_ARRAY('products/9/1.jpg') WHERE id=9;
+UPDATE products SET main_image='products/10/1.jpg', images_json=JSON_ARRAY('products/10/1.jpg') WHERE id=10;
+UPDATE products SET main_image='products/11/1.jpg', images_json=JSON_ARRAY('products/11/1.jpg') WHERE id=11;
+UPDATE products SET main_image='products/12/1.jpg', images_json=JSON_ARRAY('products/12/1.jpg') WHERE id=12;
+UPDATE products SET main_image='products/13/1.jpg', images_json=JSON_ARRAY('products/13/1.jpg') WHERE id=13;
+UPDATE products SET main_image='products/14/1.jpg', images_json=JSON_ARRAY('products/14/1.jpg') WHERE id=14;
+UPDATE products SET main_image='products/15/1.jpg', images_json=JSON_ARRAY('products/15/1.jpg') WHERE id=15;
+UPDATE products SET main_image='products/16/1.jpg', images_json=JSON_ARRAY('products/16/1.jpg') WHERE id=16;
+UPDATE products SET main_image='products/17/1.jpg', images_json=JSON_ARRAY('products/17/1.jpg') WHERE id=17;
+UPDATE products SET main_image='products/18/1.jpg', images_json=JSON_ARRAY('products/18/1.jpg') WHERE id=18;
+UPDATE products SET main_image='products/19/1.jpg', images_json=JSON_ARRAY('products/19/1.jpg') WHERE id=19;
+UPDATE products SET main_image='products/20/1.jpg', images_json=JSON_ARRAY('products/20/1.jpg') WHERE id=20;
+UPDATE products SET main_image='products/21/1.jpg', images_json=JSON_ARRAY('products/21/1.jpg') WHERE id=21;
+UPDATE products SET main_image='products/22/1.jpg', images_json=JSON_ARRAY('products/22/1.jpg') WHERE id=22;
+UPDATE products SET main_image='products/23/1.jpg', images_json=JSON_ARRAY('products/23/1.jpg') WHERE id=23;
+UPDATE products SET main_image='products/24/1.jpg', images_json=JSON_ARRAY('products/24/1.jpg') WHERE id=24;
+UPDATE products SET main_image='products/25/1.jpg', images_json=JSON_ARRAY('products/25/1.jpg') WHERE id=25;
+UPDATE products SET main_image='products/26/1.jpg', images_json=JSON_ARRAY('products/26/1.jpg') WHERE id=26;
+UPDATE products SET main_image='products/27/1.jpg', images_json=JSON_ARRAY('products/27/1.jpg') WHERE id=27;
+UPDATE products SET main_image='products/28/1.jpg', images_json=JSON_ARRAY('products/28/1.jpg') WHERE id=28;
+UPDATE products SET main_image='products/29/1.jpg', images_json=JSON_ARRAY('products/29/1.jpg') WHERE id=29;
+UPDATE products SET main_image='products/30/1.jpg', images_json=JSON_ARRAY('products/30/1.jpg') WHERE id=30;

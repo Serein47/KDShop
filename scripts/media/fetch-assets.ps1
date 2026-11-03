@@ -11,7 +11,8 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
-$style = ', soft natural window light, warm beige background, minimal product photography, centered, high detail, no text'
+$style = ', e-commerce catalog photography, high key lighting, sharp focus, no props, no scenery, centered, no text'
+$packagingHint = ', retail packaging beside the product'
 $m = Get-Content $Manifest -Raw -Encoding UTF8 | ConvertFrom-Json
 $resolvedPath = Join-Path $PSScriptRoot 'resolved.json'
 $resolved = [ordered]@{}
@@ -45,10 +46,11 @@ foreach ($p in $m.products) {
         $file = Join-Path $dir "$($i + 1).jpg"
         if (Test-Path $file) { continue }
 
-        $prompt = $p.queries[$i % $p.queries.Count] + $style
+        $extra = if ($p.name -match '礼盒|瓶|包|支装|套装') { $packagingHint } else { '' }
+        $prompt = 'isolated product photo on pure white seamless background, ' + $p.queries[$i % $p.queries.Count] + $style + $extra
         $encoded = [uri]::EscapeDataString($prompt)
         $seed = $p.id * 10 + $i
-        $url = "https://image.pollinations.ai/prompt/${encoded}?width=800&height=800&nologo=true&model=flux&seed=$seed"
+        $url = "https://image.pollinations.ai/prompt/${encoded}?width=800&height=800&nologo=true&model=turbo&seed=$seed"
         $wslFile = Convert-ToWslPath $file
 
         $ok = $false
