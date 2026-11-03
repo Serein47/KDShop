@@ -1,85 +1,53 @@
 # 演示素材（图片）
 
-## 原则
+## 结论先行
 
-- **图片不进 Git**：体积大、来源复杂、公开仓库留证
-- **只进 manifest 与 resolved.json**：记录每个商品要什么图、怎么生成
-- **存储走 MinIO**（Q14），不塞进前端 `public/`
-- **数据库存 key**：`products/21/1.jpg`，渲染时拼 `VITE_MEDIA_BASE`
+- 免费文生图（Pollinations / Flux、Turbo）**做不出真正的纯白抠图**：模型总会带浅灰背景和投影，实测 30 张里只有 3 张接近纯白
+- 试过三种补救都失败：换模型、从四角区域生长刷白（白瓷杯会被整只刷掉）、只提对比度压白场（灰阶 200 压不白）
+- **已选定风格：浅灰影棚 + 柔和投影**，视觉上接近商品图，与站点暖色背景搭配可接受
+- 真要纯白底，需要分割模型（rembg / remove.bg），留作后续增强
 
-## 为什么用 AI 生成
+## 存储方式
 
-| 图源 | 结论 |
+- 图片放 MinIO（`kdshop-media` 桶，公共只读），**不进 Git**
+- 数据库存相对 key：`products/21/1.jpg`，前端用 `VITE_MEDIA_BASE` 拼完整地址
+- 换域名或用云 OSS 时只需改环境变量，数据库不动
+
+## 脚本
+
+| 脚本 | 作用 |
 |---|---|
-| Pexels API | 2026-11 起暂停发放新 key，走不通 |
-| Openverse / Wikimedia | 本机网络超时 |
-| 抓电商站图片 | 违反平台条款、有独立版权，公开仓库会留证 |
-| **Pollinations（Flux）** | ✅ 免 key、可直连、无第三方版权；缺点是每 45 秒限 1 张 |
-
-生成图自带右下角水印，脚本会裁掉底部 8%。
-
-## 目录
-
-```
-scripts/media/
-  manifest.json       # 商品 → 提示词、张数、是否试点
-  fetch-assets.ps1    # 调 Pollinations 生成，写 resolved.json（提示词/模型/许可）
-  upload-assets.ps1   # 同步到 MinIO 并开放公共只读
-  bind-media.sql      # 把已上传的 key 回写到 products
-infra/demo-assets/
-  images/             # 实际图片，已 gitignore
-```
+| `fetch-assets.ps1` | 按 manifest 批量生成主图（限流重试、裁水印） |
+| `fix-images.ps1` | 个别生成错误时用指定提示词重跑（`fix-list.json`） |
+| `check-whiteness.ps1` | 采样四边像素，判断背景是否接近纯白，用于筛图 |
+| `upload-assets.ps1` | 同步到 MinIO 并开放公共只读 |
+| `bind-media.ps1` | 扫描本地图片，生成并执行绑定 SQL |
 
 ## 跑一遍
 
 ```powershell
-# 试点（10 个商品 × 2 张，约 16 分钟，受 45 秒/张限流）
-powershell -ExecutionPolicy Bypass -File scripts/media/fetch-assets.ps1 -Pilot -MaxPerProduct 2
+# 生成（30 个商品各 1 张，约 30-40 分钟，受 45 秒/张限流）
+powershell -ExecutionPolicy Bypass -File scripts/media/fetch-assets.ps1 -MaxPerProduct 1
 
-# 全部（30 个商品 × 3 张，约 70 分钟）
-powershell -ExecutionPolicy Bypass -File scripts/media/fetch-assets.ps1
+# 个别图不对时
+powershell -ExecutionPolicy Bypass -File scripts/media/fix-images.ps1
 
-# 上传到 MinIO
+# 上传 + 绑定
 powershell -ExecutionPolicy Bypass -File scripts/media/upload-assets.ps1
-
-# 绑定到商品
-mysql -h 127.0.0.1 -P 3307 -ukdshop -pkdshop123 kdshop < scripts/media/bind-media.sql
+powershell -ExecutionPolicy Bypass -File scripts/media/bind-media.ps1
 ```
 
 ## 提示词策略
 
-统一风格后缀，保证 30 个商品看起来像一家店拍的：
+```
+isolated product photo, {商品英文名}, e-commerce catalog photography,
+high key lighting, sharp focus, no props, no scenery, no people, centered, no text
+```
 
-```
-{subject}, soft natural window light, warm beige background,
-minimal product photography, centered, high detail, no text
-```
+经验：**flux 主体还原度高但背景偏灰；turbo 背景更亮但容易跑偏**（例如“中性笔”生成人像）。批量用 turbo、错误的用 flux 按 `fix-list.json` 补。
 
 ## 合规
 
-- 生成图无第三方版权，可自由使用
-- **不抓取**淘宝 / 京东 / 小红书的商品图与文案
-- 评价与销量**不爬取**：由真实订单生成，见 ISSUE-26
-
-## 待办
-
-- [x] 管线跑通（MinIO → 前端渲染验证）
-- [x] 试点 10 个商品出图（7 张成功，3 张被限流，脚本会自动补）
-- [ ] 铺满 30 个商品 × 3 张
-- [ ] 店铺 logo / banner
-- [ ] 评价与销量生成脚本
-
-## 试点结果（2026-11-02）
-
-- 成功出图：商品 5、11、14、21、23、25、29（各 1 张主图）
-- 失败：1、3、7（HTTP 402 限流，重试耗尽）；重跑脚本会自动补齐
-- 风格：暖米色背景 + 柔和窗光，与站点配色一致
-- 链路：MinIO 公共桶 → `VITE_MEDIA_BASE` → 详情/列表渲染，均已实测
-
-## 决策（2026-11-02，暂停开发时记录）
-
-- **风格改为「电商白底」**：白色/浅灰背景、更强对比、商品带包装或完整外形，替换当前的暖米色场景光
-- 提示词后缀改为：`pure white background, soft shadow, studio product photo, high contrast, packaging visible, centered, no text`
-- 现有 14 个商品的主图是旧风格，需按新提示词重跑覆盖
-- 评价与销量由脚本基于真实订单生成，不抓取第三方
-- 剩余 16 个商品主图未生成（进程被手动停止）
+- 生成图无第三方版权
+- 不抓取淘宝 / 京东 / 小红书图片
+- 评价与销量由真实订单生成，不爬取
