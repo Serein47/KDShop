@@ -18,4 +18,9 @@ public interface SkuMapper extends BaseMapper<Sku> {
     @Update("UPDATE skus SET stock = stock - #{qty}, locked_stock = locked_stock - #{qty} " +
             "WHERE id = #{id} AND stock >= #{qty} AND locked_stock >= #{qty}")
     int deductStock(@Param("id") Long id, @Param("qty") int qty);
+
+    /** 取消订单：释放下单时锁定的库存，不改变可售库存。 */
+    @Update("UPDATE skus SET locked_stock = locked_stock - #{qty} " +
+            "WHERE id = #{id} AND locked_stock >= #{qty}")
+    int unlockStock(@Param("id") Long id, @Param("qty") int qty);
 }

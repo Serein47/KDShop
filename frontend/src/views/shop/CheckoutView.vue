@@ -130,6 +130,7 @@ async function placeOrder() {
       <p class="done__amount">应付 ¥{{ yuan(created.payAmount) }}</p>
       <p class="done__hint">订单已生成，去支付即可完成流程。</p>
       <button class="btn btn--solid" :disabled="paying" @click="goPay">去支付</button>
+      <RouterLink :to="`/orders/${created.orderNo}`" class="btn btn--ghost">查看订单</RouterLink>
       <RouterLink to="/products" class="btn btn--ghost">继续逛逛</RouterLink>
     </div>
 

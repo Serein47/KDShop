@@ -2,7 +2,7 @@
 import { computed } from 'vue'
 import { mediaUrl } from '@/api/media'
 
-const props = defineProps<{ name: string; image?: string; seed?: number; ratio?: string }>()
+const props = defineProps<{ name: string; image?: string | null; seed?: number; ratio?: string }>()
 
 /** 没有实拍图时，用标题首字与暖色渐变生成一张"纸样"，保证版面不塌。 */
 const palette = [
