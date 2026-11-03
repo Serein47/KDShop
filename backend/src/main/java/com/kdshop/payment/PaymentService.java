@@ -158,6 +158,10 @@ public class PaymentService {
         if ("SUCCESS".equals(payment.getStatus())) {
             return Map.of("code", 0, "message", "ok", "idempotent", true);
         }
+        // 订单取消会把待支付单置为 CLOSED；晚到的回调只确认收到，不再复活支付单
+        if (!"PENDING".equals(payment.getStatus())) {
+            return Map.of("code", 0, "message", "ok", "closed", true);
+        }
 
         String result = payload.getOrDefault("status", "FAILED");
         Payment patch = new Payment();

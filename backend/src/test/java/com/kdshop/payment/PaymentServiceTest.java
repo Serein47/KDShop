@@ -113,6 +113,27 @@ class PaymentServiceTest {
         verify(paymentMapper, org.mockito.Mockito.never()).updateById(any(Payment.class));
     }
 
+    @Test
+    void lateCallbackForClosedPaymentIsIgnored() {
+        when(redis.opsForValue()).thenReturn(valueOps);
+        when(valueOps.setIfAbsent(anyString(), anyString(), any())).thenReturn(true);
+        Payment payment = new Payment();
+        payment.setId(1L);
+        payment.setOutTradeNo("PAY1");
+        payment.setAmountCent(100);
+        payment.setStatus("CLOSED");
+        when(paymentMapper.selectOne(any())).thenReturn(payment);
+
+        Map<String, String> payload = basePayload(100);
+        payload.put("sign", signer.sign(payload));
+
+        Map<String, Object> result = service.handleCallback(payload);
+
+        assertThat(result.get("closed")).isEqualTo(true);
+        verify(paymentMapper, org.mockito.Mockito.never()).updateById(any(Payment.class));
+        verify(orderPaidService, org.mockito.Mockito.never()).markPaid(any(), anyString());
+    }
+
     private Map<String, String> basePayload(int amount) {
         Map<String, String> payload = new LinkedHashMap<>();
         payload.put("outTradeNo", "PAY1");
