@@ -54,8 +54,15 @@ async function finish(success: boolean) {
           <p :class="['state', payment.status === 'SUCCESS' ? 'ok' : 'bad']">
             {{ payment.status === 'SUCCESS' ? '支付成功' : '支付失败' }}
           </p>
-          <p class="meta">订单已转为「已付款」，库存已扣减。订单详情页在下一版开放。</p>
-          <RouterLink to="/products" class="btn btn--ghost">返回商城</RouterLink>
+          <p class="meta">
+            {{ payment.status === 'SUCCESS'
+              ? '订单已转为「已付款」，库存已扣减。'
+              : '支付未完成，可以回订单详情重新发起支付。' }}
+          </p>
+          <div class="result__actions">
+            <RouterLink :to="`/orders/${payment.orderNo}`" class="btn btn--solid">查看订单</RouterLink>
+            <RouterLink to="/products" class="btn btn--ghost">继续逛逛</RouterLink>
+          </div>
         </div>
 
         <p class="note">这是模拟网关：按钮会让服务端签名并回调平台，等价于真实通道的异步通知。</p>
@@ -76,6 +83,7 @@ async function finish(success: boolean) {
 .state.ok { color: var(--sage); }
 .state.bad { color: var(--rust); }
 .result { margin-top: 10px; }
+.result__actions { display: flex; justify-content: center; gap: 10px; margin-top: 18px; flex-wrap: wrap; }
 .note { color: var(--muted); font-size: 11px; line-height: 1.6; margin-top: 22px; text-align: left; }
 .tip { color: var(--muted); }
 </style>

@@ -169,7 +169,7 @@ onMounted(async () => {
             </div>
             <button class="cta" :disabled="!canBuy" @click="addToCart">加入购物车</button>
           </div>
-          <p class="hint">支持购物车与登录后同步；结算与支付在下一版开放。</p>
+          <p class="hint">支持购物车与登录后同步；结算、支付与订单跟踪已开放。</p>
         </div>
       </div>
 

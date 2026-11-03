@@ -48,6 +48,7 @@ function search() {
       <div class="auth">
         <RouterLink v-if="!auth.user" to="/login" class="login-link">登录</RouterLink>
         <template v-else>
+          <RouterLink to="/orders" class="order-link">我的订单</RouterLink>
           <span class="nick">{{ auth.user.nickname }}</span>
           <button class="logout" @click="auth.logout()">退出</button>
         </template>
@@ -144,6 +145,8 @@ function search() {
 .login-link { padding: 6px 14px; border: 1px solid var(--line); border-radius: 999px; color: var(--ink-soft); }
 .login-link:hover { border-color: var(--rust); color: var(--rust); }
 .nick { color: var(--ink-soft); }
+.order-link { color: var(--ink-soft); padding: 6px 4px; }
+.order-link:hover { color: var(--rust); }
 .logout { border: 0; background: none; color: var(--muted); cursor: pointer; font-size: 12px; }
 .logout:hover { color: var(--rust); }
 .search {
