@@ -332,6 +332,906 @@
         "building blocks",
         "wooden toy"
       ]
+    },
+    {
+      "id": 31,
+      "name": "粗陶手捏小兽摆件",
+      "pilot": false,
+      "count": 1,
+      "queries": [
+        "ceramic animal figurine",
+        "ceramic animal figurine"
+      ]
+    },
+    {
+      "id": 32,
+      "name": "柴烧裂纹茶仓",
+      "pilot": false,
+      "count": 1,
+      "queries": [
+        "ceramic tea caddy",
+        "ceramic tea caddy"
+      ]
+    },
+    {
+      "id": 33,
+      "name": "雪松线香 30 支",
+      "pilot": false,
+      "count": 1,
+      "queries": [
+        "incense sticks",
+        "incense sticks"
+      ]
+    },
+    {
+      "id": 34,
+      "name": "陶罐香薰蜡烛 · 白茶",
+      "pilot": false,
+      "count": 1,
+      "queries": [
+        "scented candle jar",
+        "scented candle jar"
+      ]
+    },
+    {
+      "id": 35,
+      "name": "干花香囊 3 只装",
+      "pilot": false,
+      "count": 1,
+      "queries": [
+        "dried flower sachet",
+        "dried flower sachet"
+      ]
+    },
+    {
+      "id": 36,
+      "name": "手织亚麻茶巾",
+      "pilot": false,
+      "count": 1,
+      "queries": [
+        "linen tea towel",
+        "linen tea towel"
+      ]
+    },
+    {
+      "id": 37,
+      "name": "棉麻封面手账本 A5",
+      "pilot": false,
+      "count": 1,
+      "queries": [
+        "linen cover notebook",
+        "linen cover notebook"
+      ]
+    },
+    {
+      "id": 38,
+      "name": "旅行者皮革手账",
+      "pilot": false,
+      "count": 1,
+      "queries": [
+        "leather journal",
+        "leather journal"
+      ]
+    },
+    {
+      "id": 39,
+      "name": "黄铜蘸水笔 · 笔尖三支",
+      "pilot": false,
+      "count": 1,
+      "queries": [
+        "brass dip pen",
+        "brass dip pen"
+      ]
+    },
+    {
+      "id": 40,
+      "name": "手工棉纸信笺",
+      "pilot": false,
+      "count": 1,
+      "queries": [
+        "cotton paper letter set",
+        "cotton paper letter set"
+      ]
+    },
+    {
+      "id": 41,
+      "name": "烫金贺卡 · 生日",
+      "pilot": false,
+      "count": 1,
+      "queries": [
+        "greeting card",
+        "greeting card"
+      ]
+    },
+    {
+      "id": 42,
+      "name": "纸艺灯罩 DIY 套件",
+      "pilot": false,
+      "count": 1,
+      "queries": [
+        "paper lamp shade",
+        "paper lamp shade"
+      ]
+    },
+    {
+      "id": 43,
+      "name": "活页替芯 A5 · 空白",
+      "pilot": false,
+      "count": 1,
+      "queries": [
+        "notebook refill paper",
+        "notebook refill paper"
+      ]
+    },
+    {
+      "id": 44,
+      "name": "山野杂货礼盒 · 四件套",
+      "pilot": false,
+      "count": 1,
+      "queries": [
+        "gift box set",
+        "gift box set"
+      ]
+    },
+    {
+      "id": 45,
+      "name": "手绘节气贺卡 12 张",
+      "pilot": false,
+      "count": 1,
+      "queries": [
+        "greeting card",
+        "greeting card"
+      ]
+    },
+    {
+      "id": 46,
+      "name": "烫金婚礼请柬 10 份",
+      "pilot": false,
+      "count": 1,
+      "queries": [
+        "wedding invitation card",
+        "wedding invitation card"
+      ]
+    },
+    {
+      "id": 47,
+      "name": "立体纸雕贺卡",
+      "pilot": false,
+      "count": 1,
+      "queries": [
+        "greeting card",
+        "greeting card"
+      ]
+    },
+    {
+      "id": 48,
+      "name": "感谢卡 20 张",
+      "pilot": false,
+      "count": 1,
+      "queries": [
+        "home lifestyle product",
+        "home lifestyle product"
+      ]
+    },
+    {
+      "id": 49,
+      "name": "粗陶杯 + 茶叶伴手礼",
+      "pilot": false,
+      "count": 1,
+      "queries": [
+        "handmade gift set",
+        "handmade gift set"
+      ]
+    },
+    {
+      "id": 50,
+      "name": "手作皂礼袋",
+      "pilot": false,
+      "count": 1,
+      "queries": [
+        "soap gift bag",
+        "soap gift bag"
+      ]
+    },
+    {
+      "id": 51,
+      "name": "冷萃咖啡液 6 条",
+      "pilot": false,
+      "count": 1,
+      "queries": [
+        "cold brew coffee concentrate",
+        "cold brew coffee concentrate"
+      ]
+    },
+    {
+      "id": 52,
+      "name": "茉莉花茶 100g",
+      "pilot": false,
+      "count": 1,
+      "queries": [
+        "jasmine tea tin",
+        "jasmine tea tin"
+      ]
+    },
+    {
+      "id": 53,
+      "name": "气泡水 12 罐",
+      "pilot": false,
+      "count": 1,
+      "queries": [
+        "sparkling water cans",
+        "sparkling water cans"
+      ]
+    },
+    {
+      "id": 54,
+      "name": "坚果每日包 30 袋",
+      "pilot": false,
+      "count": 1,
+      "queries": [
+        "mixed nuts pack",
+        "mixed nuts pack"
+      ]
+    },
+    {
+      "id": 55,
+      "name": "黑巧克力 70% 100g",
+      "pilot": false,
+      "count": 1,
+      "queries": [
+        "dark chocolate bar",
+        "dark chocolate bar"
+      ]
+    },
+    {
+      "id": 56,
+      "name": "海盐苏打饼 200g",
+      "pilot": false,
+      "count": 1,
+      "queries": [
+        "soda crackers",
+        "soda crackers"
+      ]
+    },
+    {
+      "id": 57,
+      "name": "冻干草莓 50g",
+      "pilot": false,
+      "count": 1,
+      "queries": [
+        "freeze dried strawberry",
+        "freeze dried strawberry"
+      ]
+    },
+    {
+      "id": 58,
+      "name": "肉松小贝 6 枚",
+      "pilot": false,
+      "count": 1,
+      "queries": [
+        "cake roll snack",
+        "cake roll snack"
+      ]
+    },
+    {
+      "id": 59,
+      "name": "硅胶锅铲套装",
+      "pilot": false,
+      "count": 1,
+      "queries": [
+        "silicone spatula set",
+        "silicone spatula set"
+      ]
+    },
+    {
+      "id": 60,
+      "name": "不锈钢沥水篮",
+      "pilot": false,
+      "count": 1,
+      "queries": [
+        "stainless colander",
+        "stainless colander"
+      ]
+    },
+    {
+      "id": 61,
+      "name": "玻璃保鲜盒 3 件套",
+      "pilot": false,
+      "count": 1,
+      "queries": [
+        "glass food container",
+        "glass food container"
+      ]
+    },
+    {
+      "id": 62,
+      "name": "竹制砧板",
+      "pilot": false,
+      "count": 1,
+      "queries": [
+        "bamboo cutting board",
+        "bamboo cutting board"
+      ]
+    },
+    {
+      "id": 63,
+      "name": "手动研磨器",
+      "pilot": false,
+      "count": 1,
+      "queries": [
+        "manual grinder",
+        "manual grinder"
+      ]
+    },
+    {
+      "id": 64,
+      "name": "桌面收纳盒 3 个",
+      "pilot": false,
+      "count": 1,
+      "queries": [
+        "desk storage box",
+        "desk storage box"
+      ]
+    },
+    {
+      "id": 65,
+      "name": "可折叠脏衣篮",
+      "pilot": false,
+      "count": 1,
+      "queries": [
+        "foldable laundry basket",
+        "foldable laundry basket"
+      ]
+    },
+    {
+      "id": 66,
+      "name": "抽拉式收纳抽屉",
+      "pilot": false,
+      "count": 1,
+      "queries": [
+        "drawer organizer",
+        "drawer organizer"
+      ]
+    },
+    {
+      "id": 67,
+      "name": "静电除尘掸",
+      "pilot": false,
+      "count": 1,
+      "queries": [
+        "static duster",
+        "static duster"
+      ]
+    },
+    {
+      "id": 68,
+      "name": "浴室置物架",
+      "pilot": false,
+      "count": 1,
+      "queries": [
+        "bathroom shelf",
+        "bathroom shelf"
+      ]
+    },
+    {
+      "id": 69,
+      "name": "65W 双口充电器",
+      "pilot": false,
+      "count": 1,
+      "queries": [
+        "gan charger",
+        "gan charger"
+      ]
+    },
+    {
+      "id": 70,
+      "name": "10000mAh 充电宝",
+      "pilot": false,
+      "count": 1,
+      "queries": [
+        "power bank",
+        "power bank"
+      ]
+    },
+    {
+      "id": 71,
+      "name": "磁吸无线充",
+      "pilot": false,
+      "count": 1,
+      "queries": [
+        "magnetic wireless charger",
+        "magnetic wireless charger"
+      ]
+    },
+    {
+      "id": 72,
+      "name": "移动固态硬盘 1TB",
+      "pilot": false,
+      "count": 1,
+      "queries": [
+        "portable ssd",
+        "portable ssd"
+      ]
+    },
+    {
+      "id": 73,
+      "name": "磁吸手机支架",
+      "pilot": false,
+      "count": 1,
+      "queries": [
+        "magnetic phone stand",
+        "magnetic phone stand"
+      ]
+    },
+    {
+      "id": 74,
+      "name": "钢化膜 2 片装",
+      "pilot": false,
+      "count": 1,
+      "queries": [
+        "phone screen protector",
+        "phone screen protector"
+      ]
+    },
+    {
+      "id": 75,
+      "name": "车载支架",
+      "pilot": false,
+      "count": 1,
+      "queries": [
+        "car phone holder",
+        "car phone holder"
+      ]
+    },
+    {
+      "id": 76,
+      "name": "编织数据线 1.5m",
+      "pilot": false,
+      "count": 1,
+      "queries": [
+        "braided usb cable",
+        "braided usb cable"
+      ]
+    },
+    {
+      "id": 77,
+      "name": "重磅棉短袖",
+      "pilot": false,
+      "count": 1,
+      "queries": [
+        "cotton t-shirt",
+        "cotton t-shirt"
+      ]
+    },
+    {
+      "id": 78,
+      "name": "亚麻衬衫",
+      "pilot": false,
+      "count": 1,
+      "queries": [
+        "linen shirt",
+        "linen shirt"
+      ]
+    },
+    {
+      "id": 79,
+      "name": "连帽卫衣",
+      "pilot": false,
+      "count": 1,
+      "queries": [
+        "hoodie",
+        "hoodie"
+      ]
+    },
+    {
+      "id": 80,
+      "name": "针织开衫",
+      "pilot": false,
+      "count": 1,
+      "queries": [
+        "knit cardigan",
+        "knit cardigan"
+      ]
+    },
+    {
+      "id": 81,
+      "name": "帆布板鞋",
+      "pilot": false,
+      "count": 1,
+      "queries": [
+        "canvas sneakers",
+        "canvas sneakers"
+      ]
+    },
+    {
+      "id": 82,
+      "name": "软底乐福鞋",
+      "pilot": false,
+      "count": 1,
+      "queries": [
+        "leather loafers",
+        "leather loafers"
+      ]
+    },
+    {
+      "id": 83,
+      "name": "户外徒步鞋",
+      "pilot": false,
+      "count": 1,
+      "queries": [
+        "hiking shoes",
+        "hiking shoes"
+      ]
+    },
+    {
+      "id": 84,
+      "name": "家居棉拖",
+      "pilot": false,
+      "count": 1,
+      "queries": [
+        "cotton slippers",
+        "cotton slippers"
+      ]
+    },
+    {
+      "id": 85,
+      "name": "玻尿酸精华 30ml",
+      "pilot": false,
+      "count": 1,
+      "queries": [
+        "hyaluronic serum bottle",
+        "hyaluronic serum bottle"
+      ]
+    },
+    {
+      "id": 86,
+      "name": "修护面霜 50g",
+      "pilot": false,
+      "count": 1,
+      "queries": [
+        "face cream jar",
+        "face cream jar"
+      ]
+    },
+    {
+      "id": 87,
+      "name": "防晒乳 SPF50",
+      "pilot": false,
+      "count": 1,
+      "queries": [
+        "sunscreen tube",
+        "sunscreen tube"
+      ]
+    },
+    {
+      "id": 88,
+      "name": "清洁泥膜 100g",
+      "pilot": false,
+      "count": 1,
+      "queries": [
+        "clay face mask jar",
+        "clay face mask jar"
+      ]
+    },
+    {
+      "id": 89,
+      "name": "氨基酸洗发水",
+      "pilot": false,
+      "count": 1,
+      "queries": [
+        "shampoo bottle",
+        "shampoo bottle"
+      ]
+    },
+    {
+      "id": 90,
+      "name": "护发精油 50ml",
+      "pilot": false,
+      "count": 1,
+      "queries": [
+        "hair oil bottle",
+        "hair oil bottle"
+      ]
+    },
+    {
+      "id": 91,
+      "name": "沐浴露",
+      "pilot": false,
+      "count": 1,
+      "queries": [
+        "body wash bottle",
+        "body wash bottle"
+      ]
+    },
+    {
+      "id": 92,
+      "name": "电动牙刷",
+      "pilot": false,
+      "count": 1,
+      "queries": [
+        "electric toothbrush",
+        "electric toothbrush"
+      ]
+    },
+    {
+      "id": 93,
+      "name": "牙线 50 支",
+      "pilot": false,
+      "count": 1,
+      "queries": [
+        "dental floss",
+        "dental floss"
+      ]
+    },
+    {
+      "id": 94,
+      "name": "《陶艺入门》",
+      "pilot": false,
+      "count": 1,
+      "queries": [
+        "pottery book",
+        "pottery book"
+      ]
+    },
+    {
+      "id": 95,
+      "name": "《木工基础》",
+      "pilot": false,
+      "count": 1,
+      "queries": [
+        "woodworking book",
+        "woodworking book"
+      ]
+    },
+    {
+      "id": 96,
+      "name": "《茶经新解》",
+      "pilot": false,
+      "count": 1,
+      "queries": [
+        "tea book",
+        "tea book"
+      ]
+    },
+    {
+      "id": 97,
+      "name": "《收纳全书》",
+      "pilot": false,
+      "count": 1,
+      "queries": [
+        "home organization book",
+        "home organization book"
+      ]
+    },
+    {
+      "id": 98,
+      "name": "《手作皮革》",
+      "pilot": false,
+      "count": 1,
+      "queries": [
+        "leather craft book",
+        "leather craft book"
+      ]
+    },
+    {
+      "id": 99,
+      "name": "黄铜书签",
+      "pilot": false,
+      "count": 1,
+      "queries": [
+        "brass bookmark",
+        "brass bookmark"
+      ]
+    },
+    {
+      "id": 100,
+      "name": "帆布书袋",
+      "pilot": false,
+      "count": 1,
+      "queries": [
+        "canvas book bag",
+        "canvas book bag"
+      ]
+    },
+    {
+      "id": 101,
+      "name": "活页笔记本 A5",
+      "pilot": false,
+      "count": 1,
+      "queries": [
+        "notebook",
+        "notebook"
+      ]
+    },
+    {
+      "id": 102,
+      "name": "印章套装",
+      "pilot": false,
+      "count": 1,
+      "queries": [
+        "rubber stamp set",
+        "rubber stamp set"
+      ]
+    },
+    {
+      "id": 103,
+      "name": "瑜伽垫 6mm",
+      "pilot": false,
+      "count": 1,
+      "queries": [
+        "yoga mat",
+        "yoga mat"
+      ]
+    },
+    {
+      "id": 104,
+      "name": "弹力带 3 条",
+      "pilot": false,
+      "count": 1,
+      "queries": [
+        "resistance bands",
+        "resistance bands"
+      ]
+    },
+    {
+      "id": 105,
+      "name": "可调节哑铃 10kg",
+      "pilot": false,
+      "count": 1,
+      "queries": [
+        "adjustable dumbbell",
+        "adjustable dumbbell"
+      ]
+    },
+    {
+      "id": 106,
+      "name": "跳绳",
+      "pilot": false,
+      "count": 1,
+      "queries": [
+        "jump rope",
+        "jump rope"
+      ]
+    },
+    {
+      "id": 107,
+      "name": "泡沫轴",
+      "pilot": false,
+      "count": 1,
+      "queries": [
+        "foam roller",
+        "foam roller"
+      ]
+    },
+    {
+      "id": 108,
+      "name": "折叠椅",
+      "pilot": false,
+      "count": 1,
+      "queries": [
+        "folding camp chair",
+        "folding camp chair"
+      ]
+    },
+    {
+      "id": 109,
+      "name": "便携气罐炉",
+      "pilot": false,
+      "count": 1,
+      "queries": [
+        "camping gas stove",
+        "camping gas stove"
+      ]
+    },
+    {
+      "id": 110,
+      "name": "露营灯",
+      "pilot": false,
+      "count": 1,
+      "queries": [
+        "camping lantern",
+        "camping lantern"
+      ]
+    },
+    {
+      "id": 111,
+      "name": "防潮地垫",
+      "pilot": false,
+      "count": 1,
+      "queries": [
+        "camping mat",
+        "camping mat"
+      ]
+    },
+    {
+      "id": 112,
+      "name": "木质拼图",
+      "pilot": false,
+      "count": 1,
+      "queries": [
+        "wooden puzzle",
+        "wooden puzzle"
+      ]
+    },
+    {
+      "id": 113,
+      "name": "磁力片 60 片",
+      "pilot": false,
+      "count": 1,
+      "queries": [
+        "magnetic tiles",
+        "magnetic tiles"
+      ]
+    },
+    {
+      "id": 114,
+      "name": "毛绒玩偶",
+      "pilot": false,
+      "count": 1,
+      "queries": [
+        "plush toy",
+        "plush toy"
+      ]
+    },
+    {
+      "id": 115,
+      "name": "儿童绘本 5 册",
+      "pilot": false,
+      "count": 1,
+      "queries": [
+        "children picture books",
+        "children picture books"
+      ]
+    },
+    {
+      "id": 116,
+      "name": "硅胶辅食碗",
+      "pilot": false,
+      "count": 1,
+      "queries": [
+        "silicone baby bowl",
+        "silicone baby bowl"
+      ]
+    },
+    {
+      "id": 117,
+      "name": "学饮杯",
+      "pilot": false,
+      "count": 1,
+      "queries": [
+        "baby sippy cup",
+        "baby sippy cup"
+      ]
+    },
+    {
+      "id": 118,
+      "name": "婴儿浴巾",
+      "pilot": false,
+      "count": 1,
+      "queries": [
+        "baby muslin towel",
+        "baby muslin towel"
+      ]
+    },
+    {
+      "id": 119,
+      "name": "奶瓶消毒器",
+      "pilot": false,
+      "count": 1,
+      "queries": [
+        "bottle sterilizer",
+        "bottle sterilizer"
+      ]
+    },
+    {
+      "id": 120,
+      "name": "儿童餐椅",
+      "pilot": false,
+      "count": 1,
+      "queries": [
+        "baby high chair",
+        "baby high chair"
+      ]
     }
   ]
 }
