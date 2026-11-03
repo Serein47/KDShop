@@ -77,3 +77,18 @@ SELECT id FROM skus WHERE stock < 0 OR locked_stock < 0;
 ```
 
 三条都必须返回空结果，否则种子脚本视为失败。
+
+
+## 2026-11-03 扩容（V9）
+
+| 项 | 数量 |
+|---|---|
+| 商品 | 120 条（可见 111，其余属待审核店铺） |
+| SKU | 124 |
+| 店铺 | 8（7 个营业 + 1 个待审核） |
+| 商家账号 | merchant1–8@kdshop.dev，口令同演示账号 |
+
+- 数据源：`db/seed/catalog.json`（90 条新增）+ `db/seed/shops.json`
+- 生成器：`scripts/seed/generate-catalog-sql.mjs` → `backend/src/main/resources/db/seed/V9__seed_catalog_expanded.sql`
+- 改商品请改 JSON 再跑生成器，不要手改 SQL
+- 新增商品暂无图片，沿用占位图；出图后按 key 绑定
