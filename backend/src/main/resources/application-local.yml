@@ -1,7 +1,11 @@
-# 本地开发：额外加载演示种子数据
+# 本地开发：额外加载演示种子数据，并把邮件投到 Mailpit
 spring:
   flyway:
     locations: classpath:db/migration,classpath:db/seed
+
+kdshop:
+  mail:
+    mode: ${MAIL_MODE:SMTP}
 
 logging:
   level:

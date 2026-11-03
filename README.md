@@ -107,7 +107,7 @@ cd frontend && npm run ui:check
 ## 已知边界
 
 - **支付**是自研模拟网关，不接真实通道；签名、回调、幂等、对账按真实协议设计
-- **邮件**不真实投递：写入 `email_outbox`，本地在 Mailpit 查看
+- **邮件**：本地 profile 通过 SMTP 投到 Mailpit；生产默认 `OUTBOX_ONLY`，只写 `email_outbox`，不触达真实邮箱
 - **商品图**暂无实拍图，前端用「首字 + 纸样渐变」占位
 - 列表在百级 SKU 规模下采用内存排序分页，超过千级需改为 SQL 分页
 - 前端 Element Plus 全量引入，包体约 1 MB，后续改按需引入

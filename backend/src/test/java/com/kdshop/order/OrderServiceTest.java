@@ -10,6 +10,7 @@ import com.kdshop.checkout.mapper.UserCouponMapper;
 import com.kdshop.common.BusinessException;
 import com.kdshop.common.ErrorCode;
 import com.kdshop.config.MetaProperties;
+import com.kdshop.mail.MailOutboxWriter;
 import com.kdshop.order.dto.CreateOrderRequest;
 import com.kdshop.order.dto.OrderCreatedResult;
 import com.kdshop.order.entity.MerchantOrder;
@@ -52,6 +53,7 @@ class OrderServiceTest {
     @Mock private OrderItemMapper orderItemMapper;
     @Mock private StringRedisTemplate redis;
     @Mock private ValueOperations<String, String> valueOps;
+    @Mock private MailOutboxWriter mailOutboxWriter;
 
     private OrderService service;
     private final MetaProperties meta = new MetaProperties("CNY", "Asia/Shanghai", 9900, 1000, 15, 15, 7);
@@ -59,7 +61,8 @@ class OrderServiceTest {
     @BeforeEach
     void setUp() {
         service = new OrderService(checkoutService, skuMapper, cartItemMapper, userCouponMapper,
-                orderMapper, merchantOrderMapper, orderItemMapper, redis, meta, new ObjectMapper());
+                orderMapper, merchantOrderMapper, orderItemMapper, redis, meta, new ObjectMapper(),
+                mailOutboxWriter);
         SecurityContextHolder.getContext().setAuthentication(
                 UsernamePasswordAuthenticationToken.authenticated(1L, null, List.of()));
     }

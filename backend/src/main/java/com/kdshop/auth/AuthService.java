@@ -1,24 +1,22 @@
 package com.kdshop.auth;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.kdshop.auth.dto.LoginRequest;
 import com.kdshop.auth.dto.RegisterRequest;
 import com.kdshop.auth.dto.RegisterResult;
 import com.kdshop.auth.dto.UserView;
 import com.kdshop.auth.entity.AuthToken;
-import com.kdshop.mail.entity.EmailOutbox;
 import com.kdshop.auth.entity.Role;
 import com.kdshop.auth.entity.User;
 import com.kdshop.auth.entity.UserRole;
 import com.kdshop.auth.mapper.AuthTokenMapper;
-import com.kdshop.mail.mapper.EmailOutboxMapper;
 import com.kdshop.auth.mapper.RoleMapper;
 import com.kdshop.auth.mapper.UserMapper;
 import com.kdshop.auth.mapper.UserRoleMapper;
 import com.kdshop.common.BusinessException;
 import com.kdshop.common.ErrorCode;
+import com.kdshop.mail.MailOutboxWriter;
+import com.kdshop.mail.MailTemplateType;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
@@ -41,7 +39,6 @@ import java.time.LocalDateTime;
 import java.util.HexFormat;
 import java.util.List;
 import java.util.Map;
-
 @Service
 public class AuthService {
 
@@ -55,25 +52,23 @@ public class AuthService {
     private final RoleMapper roleMapper;
     private final UserRoleMapper userRoleMapper;
     private final AuthTokenMapper authTokenMapper;
-    private final EmailOutboxMapper emailOutboxMapper;
+    private final MailOutboxWriter mailOutboxWriter;
     private final PasswordEncoder passwordEncoder;
     private final StringRedisTemplate redis;
     private final SecurityContextRepository securityContextRepository;
-    private final ObjectMapper objectMapper;
 
     public AuthService(UserMapper userMapper, RoleMapper roleMapper, UserRoleMapper userRoleMapper,
-                       AuthTokenMapper authTokenMapper, EmailOutboxMapper emailOutboxMapper,
+                       AuthTokenMapper authTokenMapper, MailOutboxWriter mailOutboxWriter,
                        PasswordEncoder passwordEncoder, StringRedisTemplate redis,
-                       SecurityContextRepository securityContextRepository, ObjectMapper objectMapper) {
+                       SecurityContextRepository securityContextRepository) {
         this.userMapper = userMapper;
         this.roleMapper = roleMapper;
         this.userRoleMapper = userRoleMapper;
         this.authTokenMapper = authTokenMapper;
-        this.emailOutboxMapper = emailOutboxMapper;
+        this.mailOutboxWriter = mailOutboxWriter;
         this.passwordEncoder = passwordEncoder;
         this.redis = redis;
         this.securityContextRepository = securityContextRepository;
-        this.objectMapper = objectMapper;
     }
 
     @Transactional
@@ -108,16 +103,12 @@ public class AuthService {
         token.setExpiresAt(LocalDateTime.now().plus(VERIFY_TOKEN_TTL));
         authTokenMapper.insert(token);
 
-        EmailOutbox outbox = new EmailOutbox();
-        outbox.setToEmail(email);
-        outbox.setTemplate("EMAIL_VERIFY");
-        outbox.setBizKey("verify:" + user.getId() + ":" + token.getId());
-        outbox.setStatus("PENDING");
-        outbox.setPayloadJson(writePayload(Map.of(
-                "nickname", user.getNickname(),
-                "verifyUrl", "/verify-email?token=" + rawToken,
-                "expireMinutes", VERIFY_TOKEN_TTL.toMinutes())));
-        emailOutboxMapper.insert(outbox);
+        mailOutboxWriter.enqueue(email, MailTemplateType.EMAIL_VERIFY,
+                "verify:" + user.getId() + ":" + token.getId(),
+                Map.of(
+                        "nickname", user.getNickname(),
+                        "verifyUrl", "/verify-email?token=" + rawToken,
+                        "expireMinutes", VERIFY_TOKEN_TTL.toMinutes()));
 
         return new RegisterResult(user.getId(), email, true);
     }
@@ -216,14 +207,6 @@ public class AuthService {
     private UserView toView(User user, List<String> roles) {
         return new UserView(user.getId(), user.getNickname(), user.getEmail(), user.getPhone(),
                 user.getEmailVerifiedAt() != null, roles);
-    }
-
-    private String writePayload(Map<String, Object> payload) {
-        try {
-            return objectMapper.writeValueAsString(payload);
-        } catch (JsonProcessingException e) {
-            throw new BusinessException(ErrorCode.INTERNAL_ERROR, "邮件内容序列化失败");
-        }
     }
 
     private String randomToken() {

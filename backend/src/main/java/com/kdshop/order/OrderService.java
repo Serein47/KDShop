@@ -14,6 +14,8 @@ import com.kdshop.checkout.mapper.UserCouponMapper;
 import com.kdshop.common.BusinessException;
 import com.kdshop.common.ErrorCode;
 import com.kdshop.config.MetaProperties;
+import com.kdshop.mail.MailOutboxWriter;
+import com.kdshop.mail.MailTemplateType;
 import com.kdshop.order.dto.CreateOrderRequest;
 import com.kdshop.order.dto.OrderCreatedResult;
 import com.kdshop.order.entity.MerchantOrder;
@@ -28,12 +30,14 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
+import java.math.BigDecimal;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 下单：事务内建主单/子单/快照、锁库存、占券，并保证幂等。
@@ -45,6 +49,7 @@ public class OrderService {
     private static final String IDEM_PREFIX = "idem:order:";
     private static final String SEQ_PREFIX = "order:seq:";
     private static final Duration IDEM_TTL = Duration.ofHours(24);
+    private static final DateTimeFormatter MAIL_TIME = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
 
     private final CheckoutService checkoutService;
     private final SkuMapper skuMapper;
@@ -56,11 +61,13 @@ public class OrderService {
     private final StringRedisTemplate redis;
     private final MetaProperties meta;
     private final ObjectMapper objectMapper;
+    private final MailOutboxWriter mailOutboxWriter;
 
     public OrderService(CheckoutService checkoutService, SkuMapper skuMapper, CartItemMapper cartItemMapper,
                         UserCouponMapper userCouponMapper, OrderMapper orderMapper,
                         MerchantOrderMapper merchantOrderMapper, OrderItemMapper orderItemMapper,
-                        StringRedisTemplate redis, MetaProperties meta, ObjectMapper objectMapper) {
+                        StringRedisTemplate redis, MetaProperties meta, ObjectMapper objectMapper,
+                        MailOutboxWriter mailOutboxWriter) {
         this.checkoutService = checkoutService;
         this.skuMapper = skuMapper;
         this.cartItemMapper = cartItemMapper;
@@ -71,6 +78,7 @@ public class OrderService {
         this.redis = redis;
         this.meta = meta;
         this.objectMapper = objectMapper;
+        this.mailOutboxWriter = mailOutboxWriter;
     }
 
     @Transactional
@@ -184,6 +192,18 @@ public class OrderService {
         }
 
         LocalDateTime expireAt = now.plusMinutes(meta.payTimeoutMinutes());
+        List<String> itemLines = preview.subOrders().stream()
+                .flatMap(sub -> sub.items().stream())
+                .map(line -> line.name() + " × " + line.quantity())
+                .toList();
+        mailOutboxWriter.enqueueToUser(userId, MailTemplateType.ORDER_CREATED,
+                "order_created:" + order.getOrderNo(),
+                Map.of(
+                        "orderNo", order.getOrderNo(),
+                        "items", itemLines,
+                        "payAmount", BigDecimal.valueOf(order.getPayAmountCent(), 2).toPlainString(),
+                        "payUrl", "/orders/" + order.getOrderNo(),
+                        "payDeadline", expireAt.format(MAIL_TIME)));
         return new OrderCreatedResult(order.getOrderNo(), order.getStatus(), order.getPayAmountCent(),
                 expireAt, created);
     }

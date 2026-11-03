@@ -1,16 +1,14 @@
 package com.kdshop.auth;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.kdshop.auth.entity.AuthToken;
-import com.kdshop.mail.entity.EmailOutbox;
 import com.kdshop.auth.entity.User;
 import com.kdshop.auth.mapper.AuthTokenMapper;
-import com.kdshop.mail.mapper.EmailOutboxMapper;
 import com.kdshop.auth.mapper.UserMapper;
 import com.kdshop.common.BusinessException;
 import com.kdshop.common.ErrorCode;
+import com.kdshop.mail.MailOutboxWriter;
+import com.kdshop.mail.MailTemplateType;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -21,7 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
-import java.util.List;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 
@@ -36,23 +34,20 @@ public class VerificationService {
 
     private final UserMapper userMapper;
     private final AuthTokenMapper authTokenMapper;
-    private final EmailOutboxMapper emailOutboxMapper;
+    private final MailOutboxWriter mailOutboxWriter;
     private final PasswordEncoder passwordEncoder;
     private final StringRedisTemplate redis;
     private final SessionRepository<?> sessionRepository;
-    private final ObjectMapper objectMapper;
 
     public VerificationService(UserMapper userMapper, AuthTokenMapper authTokenMapper,
-                               EmailOutboxMapper emailOutboxMapper, PasswordEncoder passwordEncoder,
-                               StringRedisTemplate redis, SessionRepository<?> sessionRepository,
-                               ObjectMapper objectMapper) {
+                               MailOutboxWriter mailOutboxWriter, PasswordEncoder passwordEncoder,
+                               StringRedisTemplate redis, SessionRepository<?> sessionRepository) {
         this.userMapper = userMapper;
         this.authTokenMapper = authTokenMapper;
-        this.emailOutboxMapper = emailOutboxMapper;
+        this.mailOutboxWriter = mailOutboxWriter;
         this.passwordEncoder = passwordEncoder;
         this.redis = redis;
         this.sessionRepository = sessionRepository;
-        this.objectMapper = objectMapper;
     }
 
     @Transactional
@@ -81,7 +76,7 @@ public class VerificationService {
         if (user == null || user.getEmailVerifiedAt() != null) {
             return true;
         }
-        issueToken(user, "VERIFY", "EMAIL_VERIFY", "verify",
+        issueToken(user, "VERIFY", MailTemplateType.EMAIL_VERIFY, "verify",
                 "/verify-email?token=", Map.of("nickname", user.getNickname()));
         return true;
     }
@@ -96,7 +91,7 @@ public class VerificationService {
         if (user == null) {
             return true;
         }
-        issueToken(user, "RESET", "PASSWORD_RESET", "reset",
+        issueToken(user, "RESET", MailTemplateType.PASSWORD_RESET, "reset",
                 "/reset-password?token=", Map.of("nickname", user.getNickname()));
         return true;
     }
@@ -154,7 +149,7 @@ public class VerificationService {
         return Boolean.TRUE.equals(acquired);
     }
 
-    private void issueToken(User user, String type, String template, String bizPrefix,
+    private void issueToken(User user, String type, MailTemplateType template, String bizPrefix,
                             String urlPrefix, Map<String, Object> extra) {
         String raw = Tokens.random();
         AuthToken token = new AuthToken();
@@ -164,25 +159,13 @@ public class VerificationService {
         token.setExpiresAt(LocalDateTime.now().plus(TOKEN_TTL));
         authTokenMapper.insert(token);
 
-        Map<String, Object> payload = new java.util.HashMap<>(extra);
-        payload.put("url", urlPrefix + raw);
+        String urlKey = "VERIFY".equals(type) ? "verifyUrl" : "resetUrl";
+        Map<String, Object> payload = new HashMap<>(extra);
+        payload.put(urlKey, urlPrefix + raw);
         payload.put("expireMinutes", TOKEN_TTL.toMinutes());
 
-        EmailOutbox outbox = new EmailOutbox();
-        outbox.setToEmail(user.getEmail());
-        outbox.setTemplate(template);
-        outbox.setBizKey(bizPrefix + ":" + user.getId() + ":" + token.getId());
-        outbox.setStatus("PENDING");
-        outbox.setPayloadJson(writePayload(payload));
-        emailOutboxMapper.insert(outbox);
-    }
-
-    private String writePayload(Map<String, Object> payload) {
-        try {
-            return objectMapper.writeValueAsString(payload);
-        } catch (JsonProcessingException e) {
-            throw new BusinessException(ErrorCode.INTERNAL_ERROR, "邮件内容序列化失败");
-        }
+        mailOutboxWriter.enqueue(user.getEmail(), template,
+                bizPrefix + ":" + user.getId() + ":" + token.getId(), payload);
     }
 
     private String normalize(String email) {

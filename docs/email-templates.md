@@ -1,13 +1,16 @@
 # 邮件模板与触发点（G0）
 
-邮件不真发：写入 `email_outbox`，由后台「邮件记录」页与 Mailpit 查看。这一份定义「什么时候发、发给谁、内容长什么样」。
+邮件不投递到外部邮箱：本地 profile 通过 SMTP 投到 Mailpit，生产默认只写 `email_outbox`。这一份定义「什么时候发、发给谁、内容长什么样」。
 
 ## 通用约定
 
 - 幂等键 = `template + businessKey`，同一业务事件只入队一次（唯一索引兜底）
 - 入队失败只记日志，不回滚业务事务；业务接口照常成功
 - 模板变量缺字段 → 该封邮件标 `FAILED` 并记录原因，不阻塞队列
+- 投递失败最多尝试 3 次（间隔递增），仍失败标 `FAILED`，不影响业务
 - 所有邮件带退订说明与「本邮件由系统自动发送」
+
+> 首版实现 5 类模板：`EMAIL_VERIFY`、`PASSWORD_RESET`、`ORDER_CREATED`、`PAYMENT_SUCCESS`、`ORDER_SHIPPED`；其余模板随对应业务 Issue 接入。
 
 ## 模板
 
@@ -21,6 +24,17 @@
 | 主题 | 请验证你的 KDShop 邮箱 |
 | 变量 | `nickname`、`verifyUrl`、`expireMinutes`(30) |
 | 正文要点 | 一句说明 + 按钮 + 「链接 30 分钟内有效」+ 「非本人操作请忽略」 |
+
+### 1.1 `PASSWORD_RESET` 重置密码
+
+| 项 | 内容 |
+|---|---|
+| 触发 | 用户点「忘记密码」 |
+| 收件人 | 账号邮箱 |
+| 业务键 | `reset:{userId}:{tokenId}` |
+| 主题 | 重置你的 KDShop 密码 |
+| 变量 | `nickname`、`resetUrl`、`expireMinutes`(30) |
+| 正文要点 | 重置入口 + 有效期 + 「非本人操作请忽略」 |
 
 ### 2. `ORDER_CREATED` 下单成功
 
@@ -106,6 +120,7 @@
 
 ## 实现提示
 
-- 模板放 `backend/src/main/resources/mail-templates/`，用 Thymeleaf 渲染 HTML + 纯文本两版
+- 模板放 `backend/src/main/resources/mail-templates/`，由 `MailTemplateService` 用 `{{key}}` 占位符渲染 HTML + 纯文本；变量缺失直接标 `FAILED`
 - 发信抽象成 `MailSender` 接口：`SmtpMailSender`（本地 Mailpit）与 `OutboxOnlySender`（生产演示，只入库）
 - 生产环境默认 `OutboxOnlySender`，避免误发真实邮件
+- `MailOutboxDispatcher` 定时扫描 `PENDING`，最多尝试 3 次；失败只影响该封邮件

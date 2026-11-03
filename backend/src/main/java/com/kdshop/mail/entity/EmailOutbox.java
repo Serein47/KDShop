@@ -19,6 +19,8 @@ public class EmailOutbox {
     private String payloadJson;
     private String status;
     private String error;
+    private Integer attempts;
+    private LocalDateTime nextRetryAt;
     private LocalDateTime sentAt;
     private LocalDateTime createdAt;
 }

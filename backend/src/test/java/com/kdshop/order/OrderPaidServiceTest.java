@@ -1,11 +1,8 @@
 package com.kdshop.order;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.kdshop.auth.entity.User;
-import com.kdshop.auth.mapper.UserMapper;
 import com.kdshop.catalog.mapper.SkuMapper;
-import com.kdshop.mail.entity.EmailOutbox;
-import com.kdshop.mail.mapper.EmailOutboxMapper;
+import com.kdshop.mail.MailOutboxWriter;
+import com.kdshop.mail.MailTemplateType;
 import com.kdshop.order.entity.Order;
 import com.kdshop.order.entity.OrderItem;
 import com.kdshop.order.mapper.MerchantOrderMapper;
@@ -20,9 +17,11 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.List;
+import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -35,15 +34,14 @@ class OrderPaidServiceTest {
     @Mock private OrderItemMapper orderItemMapper;
     @Mock private SkuMapper skuMapper;
     @Mock private OrderStatusLogMapper statusLogMapper;
-    @Mock private EmailOutboxMapper emailOutboxMapper;
-    @Mock private UserMapper userMapper;
+    @Mock private MailOutboxWriter mailOutboxWriter;
 
     private OrderPaidService service;
 
     @BeforeEach
     void setUp() {
         service = new OrderPaidService(orderMapper, merchantOrderMapper, orderItemMapper, skuMapper,
-                statusLogMapper, emailOutboxMapper, new ObjectMapper(), userMapper);
+                statusLogMapper, mailOutboxWriter);
     }
 
     @Test
@@ -55,7 +53,7 @@ class OrderPaidServiceTest {
 
         assertThat(service.markPaid(1L, "PAY1")).isFalse();
         verify(skuMapper, never()).deductStock(any(), any(Integer.class));
-        verify(emailOutboxMapper, never()).insert(any(EmailOutbox.class));
+        verify(mailOutboxWriter, never()).enqueueToUser(any(), any(), any(), any());
     }
 
     @Test
@@ -76,18 +74,16 @@ class OrderPaidServiceTest {
         when(orderItemMapper.selectList(any())).thenReturn(List.of(item));
         when(skuMapper.deductStock(1L, 2)).thenReturn(1);
 
-        User user = new User();
-        user.setId(1L);
-        user.setEmail("customer@kdshop.dev");
-        when(userMapper.selectById(1L)).thenReturn(user);
-
         assertThat(service.markPaid(1L, "PAY1")).isTrue();
 
         verify(skuMapper).deductStock(1L, 2);
 
-        ArgumentCaptor<EmailOutbox> captor = ArgumentCaptor.forClass(EmailOutbox.class);
-        verify(emailOutboxMapper).insert(captor.capture());
-        assertThat(captor.getValue().getBizKey()).isEqualTo("payment_success:PAY1");
-        assertThat(captor.getValue().getToEmail()).isEqualTo("customer@kdshop.dev");
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<Map<String, Object>> payload = ArgumentCaptor.forClass(Map.class);
+        verify(mailOutboxWriter).enqueueToUser(eq(1L), eq(MailTemplateType.PAYMENT_SUCCESS),
+                eq("payment_success:PAY1"), payload.capture());
+        assertThat(payload.getValue().get("orderNo")).isEqualTo("KD202611020001");
+        assertThat(payload.getValue().get("paidAmount")).isEqualTo("128.00");
+        assertThat(payload.getValue().get("orderUrl")).isEqualTo("/orders/KD202611020001");
     }
 }
