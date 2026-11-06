@@ -11,6 +11,8 @@ import com.kdshop.common.BusinessException;
 import com.kdshop.common.ErrorCode;
 import com.kdshop.merchant.dto.ApplyRequest;
 import com.kdshop.merchant.dto.MerchantView;
+import com.kdshop.merchant.dto.ShopProfileRequest;
+import com.kdshop.merchant.dto.ShopProfileView;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -108,6 +110,43 @@ public class MerchantService {
         shop.setRejectReason(reason);
         shopMapper.updateById(shop);
         return toView(shop);
+    }
+
+    public ShopProfileView myProfile() {
+        Shop shop = requireMyShop();
+        return toProfileView(shop);
+    }
+
+    @Transactional
+    public ShopProfileView updateProfile(ShopProfileRequest request) {
+        Shop shop = requireMyShop();
+        Long taken = shopMapper.selectCount(new LambdaQueryWrapper<Shop>()
+                .eq(Shop::getShopName, request.shopName().trim())
+                .ne(Shop::getId, shop.getId()));
+        if (taken != null && taken > 0) {
+            throw new BusinessException(ErrorCode.SHOP_NAME_TAKEN);
+        }
+        shop.setShopName(request.shopName().trim());
+        shop.setDescription(request.description());
+        shop.setLogo(request.logo());
+        shop.setContactName(request.contactName());
+        shop.setContactPhone(request.contactPhone());
+        shopMapper.updateById(shop);
+        return toProfileView(shop);
+    }
+
+    private Shop requireMyShop() {
+        Shop shop = shopMapper.selectOne(new LambdaQueryWrapper<Shop>().eq(Shop::getUserId, currentUserId()));
+        if (shop == null || !"ACTIVE".equals(shop.getStatus())) {
+            throw new BusinessException(ErrorCode.MERCHANT_NOT_APPROVED, "店铺未开通");
+        }
+        return shop;
+    }
+
+    private ShopProfileView toProfileView(Shop shop) {
+        return new ShopProfileView(shop.getId(), shop.getShopName(), shop.getDescription(), shop.getLogo(),
+                shop.getContactName(), shop.getContactPhone(), shop.getStatus(), shop.getCommissionRate(),
+                shop.getCreatedAt());
     }
 
     private void grantMerchantRole(Long userId) {
