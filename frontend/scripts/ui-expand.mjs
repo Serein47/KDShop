@@ -1,0 +1,15 @@
+import { chromium } from 'playwright-core';
+const base = 'http://localhost:5180';
+const browser = await chromium.launch({ channel: 'msedge', headless: true });
+const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+await page.goto(base + '/products', { waitUntil: 'networkidle' });
+await page.waitForTimeout(1200);
+const rail = page.locator('.rail');
+const before = await rail.innerText();
+console.log('before has 饮料冲调:', before.includes('饮料冲调'));
+await page.getByRole('button', { name: '食品饮料', exact: true }).click();
+await page.waitForTimeout(1000);
+const after = await rail.innerText();
+console.log('after has 饮料冲调:', after.includes('饮料冲调'), '| url:', page.url());
+await page.screenshot({ path: 'D:/web-ai-code/KDShop/.shots/category-expand.png' });
+await browser.close();
