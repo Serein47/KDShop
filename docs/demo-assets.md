@@ -46,6 +46,14 @@ high key lighting, sharp focus, no props, no scenery, no people, centered, no te
 
 经验：**flux 主体还原度高但背景偏灰；turbo 背景更亮但容易跑偏**（例如“中性笔”生成人像）。批量用 turbo、错误的用 flux 按 `fix-list.json` 补。
 
+## 母婴图修正（2026-11-06）
+
+AI 给母婴商品生成了带婴儿的诡异照片，已改为纯产品图并去掉人物：
+
+- 提示词统一追加 `no people, no humans, no children`
+- 115 儿童绘本、116 辅食碗、118 婴儿浴巾、119 奶瓶消毒器、120 儿童餐椅 已重新生成并覆盖 MinIO 同名 key
+- 数据库 `main_image` 路径不变，无需重新绑定；本地/线上只需刷新缓存
+
 ## 合规
 
 - 生成图无第三方版权
