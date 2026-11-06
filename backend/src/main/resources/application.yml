@@ -70,6 +70,11 @@ logging:
     com.kdshop: DEBUG
 
 kdshop:
+  media:
+    endpoint: ${MINIO_ENDPOINT:http://127.0.0.1:9000}
+    access-key: ${MINIO_ACCESS_KEY:kdshop}
+    secret-key: ${MINIO_SECRET_KEY:kdshop123}
+    bucket: ${MINIO_BUCKET:kdshop-media}
   payment:
     secret: ${PAY_SECRET:dev-secret-change-me}
   mail:

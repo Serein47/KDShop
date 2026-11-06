@@ -48,6 +48,7 @@ function search() {
       <RouterLink v-if="auth.user" :to="auth.hasRole('MERCHANT') ? '/merchant/orders' : '/merchant/apply'" class="merchant-link">
         {{ auth.hasRole('MERCHANT') ? '商家中心' : '商家入驻' }}
       </RouterLink>
+      <RouterLink v-if="auth.hasRole('MERCHANT')" to="/merchant/products" class="merchant-link">商品管理</RouterLink>
       <RouterLink v-if="auth.hasRole('ADMIN')" to="/admin/merchants" class="merchant-link">商家审核</RouterLink>
 
       <div class="auth">
