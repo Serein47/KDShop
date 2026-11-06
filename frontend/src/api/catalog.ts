@@ -85,6 +85,7 @@ export interface ShopPage {
   productCount: number
   salesCount: number
   createdAt: string
+  following?: boolean
 }
 
 function unwrap<T>(payload: ApiResponse<T>): T {

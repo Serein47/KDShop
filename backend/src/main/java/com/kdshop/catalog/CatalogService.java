@@ -24,6 +24,7 @@ import com.kdshop.catalog.mapper.ShopMapper;
 import com.kdshop.catalog.mapper.SkuMapper;
 import com.kdshop.catalog.mapper.TagMapper;
 import com.kdshop.common.BusinessException;
+import com.kdshop.favorite.FavoriteService;
 import com.kdshop.common.ErrorCode;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
@@ -53,10 +54,12 @@ public class CatalogService {
     private final ProductOptionMapper productOptionMapper;
     private final ShopMapper shopMapper;
     private final ObjectMapper objectMapper;
+    private final FavoriteService favoriteService;
 
     public CatalogService(ProductMapper productMapper, SkuMapper skuMapper, CategoryMapper categoryMapper,
                           TagMapper tagMapper, ProductTagMapper productTagMapper,
-                          ProductOptionMapper productOptionMapper, ShopMapper shopMapper, ObjectMapper objectMapper) {
+                          ProductOptionMapper productOptionMapper, ShopMapper shopMapper, ObjectMapper objectMapper,
+                          FavoriteService favoriteService) {
         this.productMapper = productMapper;
         this.skuMapper = skuMapper;
         this.categoryMapper = categoryMapper;
@@ -65,6 +68,7 @@ public class CatalogService {
         this.productOptionMapper = productOptionMapper;
         this.shopMapper = shopMapper;
         this.objectMapper = objectMapper;
+        this.favoriteService = favoriteService;
     }
 
     public List<CategoryNode> categories() {
@@ -197,7 +201,7 @@ public class CatalogService {
                 product.getFlawNote(),
                 product.getRequiresFlawAck() != null && product.getRequiresFlawAck() == 1,
                 product.getSaleMode(), product.getLeadDays(), product.getDepositRate(),
-                product.getSalesCount(), 0.0, 0L, false);
+                product.getSalesCount(), 0.0, 0L, favoriteService.isFavorited(product.getId()));
     }
 
     public ShopPage shop(Long merchantId) {
@@ -210,7 +214,8 @@ public class CatalogService {
                 .eq(Product::getStatus, "ON")
                 .isNull(Product::getDeletedAt));
         return new ShopPage(shop.getId(), shop.getShopName(), shop.getLogo(), shop.getDescription(),
-                count == null ? 0 : count.intValue(), 0, shop.getCreatedAt());
+                count == null ? 0 : count.intValue(), 0, shop.getCreatedAt(),
+                favoriteService.isFollowing(merchantId));
     }
 
     public PageResult<ProductCard> shopProducts(Long merchantId, int page, int size) {

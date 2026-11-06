@@ -5,8 +5,14 @@ import { fetchProduct, yuan, type ProductDetail } from '@/api/catalog'
 import ProductMedia from '@/components/ProductMedia.vue'
 import { ElMessage } from 'element-plus'
 import { useCartStore } from '@/stores/cart'
+import { addFavorite, removeFavorite } from '@/api/favorite'
+import { useAuthStore } from '@/stores/auth'
+import { useRouter } from 'vue-router'
 
 const cart = useCartStore()
+const auth = useAuthStore()
+const router = useRouter()
+const favorited = ref(false)
 
 const route = useRoute()
 const product = ref<ProductDetail | null>(null)
@@ -44,6 +50,27 @@ const saleText = computed(() => {
   return '现货 · 48 小时内发出'
 })
 
+async function toggleFavorite() {
+  if (!auth.user) {
+    router.push({ path: '/login', query: { redirect: route.fullPath } })
+    return
+  }
+  if (!product.value) return
+  try {
+    if (favorited.value) {
+      await removeFavorite(product.value.id)
+      favorited.value = false
+      ElMessage.success('已取消收藏')
+    } else {
+      await addFavorite(product.value.id)
+      favorited.value = true
+      ElMessage.success('已加入收藏夹')
+    }
+  } catch (e: any) {
+    ElMessage.error(e?.response?.data?.message || '操作失败')
+  }
+}
+
 async function addToCart() {
   if (!canBuy.value || !sku.value || !product.value) {
     ElMessage.warning('请先完成必选项')
@@ -69,8 +96,10 @@ async function addToCart() {
 }
 
 onMounted(async () => {
+  if (!auth.ready) await auth.fetchMe()
   try {
     product.value = await fetchProduct(route.params.id as string)
+  favorited.value = Boolean(product.value?.favorited)
     skuId.value = product.value.skus[0]?.id ?? null
   } catch {
     failed.value = true
@@ -104,6 +133,9 @@ onMounted(async () => {
         <div class="info">
           <p class="eyebrow">{{ product.shop.shopName }}</p>
           <h1>{{ product.name }}</h1>
+        <button class="fav-btn" :class="{ on: favorited }" @click="toggleFavorite">
+          {{ favorited ? '已收藏' : '收藏' }}
+        </button>
           <p class="sub">{{ product.subtitle }}</p>
 
           <div class="price">
@@ -273,6 +305,17 @@ onMounted(async () => {
   cursor: pointer;
 }
 .qty span { width: 34px; text-align: center; font-size: 14px; }
+.fav-btn {
+  margin: 6px 0 14px;
+  padding: 7px 16px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: none;
+  font-size: 13px;
+  color: var(--muted);
+  cursor: pointer;
+}
+.fav-btn.on { border-color: var(--rust); color: var(--rust); background: var(--rust-soft); }
 .cta {
   flex: 1;
   height: 44px;
