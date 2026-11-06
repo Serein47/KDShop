@@ -1,4 +1,5 @@
 <script setup lang="ts">
+const supportEmail = (import.meta.env.VITE_SUPPORT_EMAIL as string | undefined) ?? 'support@kdshop.dev'
 const faqs = [
   { q: '多久发货？', a: '现货商品在付款后 48 小时内发出；预售与定制商品按详情页标注的工期发出。' },
   { q: '运费怎么算？', a: '单个店铺满 ¥99 包邮，未满收 ¥10；多商家订单按店铺分别计算。' },
@@ -26,9 +27,9 @@ const faqs = [
 
     <section class="card">
       <h2>联系我们</h2>
-      <p class="line">邮箱：<a href="mailto:support@kdshop.dev">support@kdshop.dev</a></p>
+      <p class="line">邮箱：<a :href="`mailto:${supportEmail}`">{{ supportEmail }}</a></p>
       <p class="line">工作时间：周一至周五 10:00–18:00</p>
-      <p class="note">演示环境说明：客服邮箱不会真实回复，邮件仅用于展示流程。</p>
+      <p class="note">演示环境说明：<strong>kdshop.dev 是虚构域名，这个邮箱不存在</strong>，发信不会有人收到。接入真实客服时，用环境变量 <code>VITE_SUPPORT_EMAIL</code> 换成真实地址即可。</p>
     </section>
 
     <RouterLink to="/products" class="btn btn--ghost">继续逛逛</RouterLink>
@@ -46,5 +47,6 @@ h1 { font-size: 34px; margin: 6px 0 22px; }
 .faq dd { margin: 6px 0 0; color: var(--muted); font-size: 13px; line-height: 1.8; }
 .line { font-size: 14px; margin: 0 0 8px; }
 .line a { color: var(--rust); }
-.note { color: var(--muted); font-size: 12px; margin: 14px 0 0; }
+.note { color: var(--muted); font-size: 12px; margin: 14px 0 0; line-height: 1.8; }
+.note code { background: var(--rust-soft); padding: 1px 6px; border-radius: 4px; font-size: 11px; }
 </style>

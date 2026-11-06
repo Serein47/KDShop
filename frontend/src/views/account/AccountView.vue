@@ -126,14 +126,14 @@ async function makeDefault(item: Address) {
 
     <section class="card">
       <h2>我的</h2>
-      <div class="links">
-        <RouterLink to="/orders">我的订单</RouterLink>
-        <RouterLink to="/favorites">收藏夹</RouterLink>
-        <RouterLink to="/cart">购物车</RouterLink>
+      <div class="quick">
+        <RouterLink to="/orders" class="qbtn"><span>📦</span>我的订单</RouterLink>
+        <RouterLink to="/favorites" class="qbtn"><span>♡</span>收藏夹</RouterLink>
+        <RouterLink to="/cart" class="qbtn"><span>🛒</span>购物车</RouterLink>
       </div>
     </section>
 
-    <el-dialog v-model="dialog" :title="editing ? '编辑地址' : '新增地址'" width="520px">
+    <el-dialog v-model="dialog" :title="editing ? '编辑地址' : '新增地址'" width="600px" class="addr-dialog">
       <div class="form">
         <div class="row">
           <label>收货人<input v-model="form.receiver" /></label>
@@ -170,12 +170,14 @@ h1 { font-size: 34px; margin: 6px 0 22px; }
 .link { border: 0; background: none; color: var(--ink-soft); font-size: 13px; cursor: pointer; }
 .link:hover { color: var(--rust); }
 .link--danger:hover { color: #c0392b; }
-.links { display: flex; gap: 18px; font-size: 14px; }
-.links a { color: var(--ink-soft); }
-.links a:hover { color: var(--rust); }
+.quick { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+.qbtn { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 14px 10px; border: 1px solid var(--line); border-radius: 12px; color: var(--ink-soft); font-size: 14px; background: #fff; transition: all 0.2s; }
+.qbtn span { font-size: 16px; }
+.qbtn:hover { border-color: var(--rust); color: var(--rust); transform: translateY(-1px); }
 .form { display: grid; gap: 14px; }
-.row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.row { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+.row label { min-width: 0; }
 label { display: grid; gap: 6px; font-size: 13px; color: var(--muted); }
-input { padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; font-size: 14px; }
+input { box-sizing: border-box; width: 100%; min-width: 0; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; font-size: 14px; }
 .state { color: var(--muted); padding: 20px 0; }
 </style>
