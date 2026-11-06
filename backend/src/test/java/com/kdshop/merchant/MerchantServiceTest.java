@@ -93,6 +93,22 @@ class MerchantServiceTest {
     }
 
     @Test
+    void renamingToExistingShopNameIsRejected() {
+        Shop mine = new Shop();
+        mine.setId(1L);
+        mine.setUserId(2L);
+        mine.setStatus("ACTIVE");
+        when(shopMapper.selectOne(any())).thenReturn(mine);
+        when(shopMapper.selectCount(any())).thenReturn(1L);
+
+        assertThatThrownBy(() -> service.updateProfile(
+                new com.kdshop.merchant.dto.ShopProfileRequest("已存在的店", null, null, "李四", "13800009001")))
+                .isInstanceOf(BusinessException.class)
+                .extracting(e -> ((BusinessException) e).errorCode())
+                .isEqualTo(ErrorCode.SHOP_NAME_TAKEN);
+    }
+
+    @Test
     void approvingWithoutAdminRoleIsForbidden() {
         when(roleMapper.selectOne(any())).thenReturn(role(2L, "ADMIN"));
         when(userRoleMapper.selectCount(any())).thenReturn(0L);
