@@ -36,10 +36,10 @@ function search() {
       </RouterLink>
 
       <nav class="nav">
-        <RouterLink to="/products">全部商品</RouterLink>
-        <RouterLink to="/favorites">收藏夹</RouterLink>
-        <a href="/#craft">手作专区</a>
-        <a href="/#about">关于</a>
+        <RouterLink to="/products" class="nav__plain">全部商品</RouterLink>
+        <a href="/#craft" class="nav__accent">手作专区</a>
+        <RouterLink to="/favorites" class="nav__pill">♡ 收藏夹</RouterLink>
+        <a href="/#about" class="nav__plain">关于</a>
       </nav>
 
       <RouterLink to="/cart" class="cart-link">
@@ -127,6 +127,11 @@ function search() {
   transition: transform .18s ease;
 }
 .nav a:hover { color: var(--ink); }
+.nav__pill { border: 1px solid var(--line); border-radius: 999px; padding: 5px 12px !important; font-size: 13px; }
+.nav__pill:hover { border-color: var(--rust); color: var(--rust) !important; }
+.nav__accent { color: var(--rust); }
+.nav__accent::before { content: ""; display: inline-block; width: 5px; height: 5px; border-radius: 50%; background: var(--rust); margin-right: 6px; vertical-align: 2px; }
+.nav__plain { color: var(--muted); }
 .nav a:hover::after { transform: scaleX(1); }
 
 .cart-link {

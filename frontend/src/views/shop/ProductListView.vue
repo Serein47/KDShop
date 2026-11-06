@@ -13,6 +13,14 @@ const loading = ref(false)
 const categories = ref<CategoryNode[]>([])
 const tags = ref<TagGroups>({ CRAFT: [], MATERIAL: [], OCCASION: [] })
 
+const expanded = ref<Set<number>>(new Set())
+const isExpanded = (id: number) => expanded.value.has(id)
+function toggleCategory(id: number) {
+  const next = new Set(expanded.value)
+  if (next.has(id)) next.delete(id)
+  else next.add(id)
+  expanded.value = next
+}
 const generalCategories = computed(() => categories.value.filter((c) => !c.featured))
 const featuredCategories = computed(() => categories.value.filter((c) => c.featured))
 
@@ -100,10 +108,13 @@ const totalPages = computed(() => Math.max(1, Math.ceil(total.value / size)))
         <h3>全部分类</h3>
         <ul>
           <li v-for="top in generalCategories" :key="top.id">
-            <button class="link" :class="{ on: query.categoryId === top.id }" @click="apply({ categoryId: top.id })">
-              {{ top.name }}
-            </button>
-            <ul class="sub">
+            <div class="rail__row">
+              <button class="link" :class="{ on: query.categoryId === top.id }" @click="apply({ categoryId: top.id })">
+                {{ top.name }}
+              </button>
+              <button class="caret" :class="{ open: isExpanded(top.id) }" :aria-label="isExpanded(top.id) ? '收起' : '展开'" @click="toggleCategory(top.id)">{{ isExpanded(top.id) ? '−' : '+' }}</button>
+            </div>
+            <ul v-show="isExpanded(top.id)" class="sub">
               <li v-for="child in top.children" :key="child.id">
                 <button class="link link--sm" :class="{ on: query.categoryId === child.id }" @click="apply({ categoryId: child.id })">
                   {{ child.name }}
@@ -118,10 +129,13 @@ const totalPages = computed(() => Math.max(1, Math.ceil(total.value / size)))
         <h3>手作专区</h3>
         <ul>
           <li v-for="top in featuredCategories" :key="top.id">
-            <button class="link" :class="{ on: query.categoryId === top.id }" @click="apply({ categoryId: top.id })">
-              {{ top.name }}
-            </button>
-            <ul class="sub">
+            <div class="rail__row">
+              <button class="link" :class="{ on: query.categoryId === top.id }" @click="apply({ categoryId: top.id })">
+                {{ top.name }}
+              </button>
+              <button class="caret" :class="{ open: isExpanded(top.id) }" :aria-label="isExpanded(top.id) ? '收起' : '展开'" @click="toggleCategory(top.id)">{{ isExpanded(top.id) ? '−' : '+' }}</button>
+            </div>
+            <ul v-show="isExpanded(top.id)" class="sub">
               <li v-for="child in top.children" :key="child.id">
                 <button class="link link--sm" :class="{ on: query.categoryId === child.id }" @click="apply({ categoryId: child.id })">
                   {{ child.name }}
@@ -287,4 +301,9 @@ const totalPages = computed(() => Math.max(1, Math.ceil(total.value / size)))
   .list { grid-template-columns: 1fr; }
   .grid { grid-template-columns: repeat(2, 1fr); }
 }
+.rail__row { display: flex; align-items: center; gap: 6px; }
+.caret { border: 0; background: none; color: var(--muted); font-size: 14px; line-height: 1; width: 18px; height: 18px; border-radius: 50%; cursor: pointer; transition: all 0.15s; }
+.caret:hover { background: var(--rust-soft); color: var(--rust); }
+.caret.open { color: var(--rust); }
+.sub { margin: 2px 0 6px; }
 </style>
