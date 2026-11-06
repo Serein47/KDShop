@@ -11,7 +11,6 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
@@ -60,9 +59,9 @@ public class AddressService {
 
     @Transactional
     public void delete(Long id) {
-        Address address = requireOwned(id);
-        address.setDeletedAt(LocalDateTime.now());
-        addressMapper.updateById(address);
+        requireOwned(id);
+        // 逻辑删除由 MyBatis-Plus 处理（deleted_at = now()），手写 update 会被全局逻辑删除规则忽略
+        addressMapper.deleteById(id);
     }
 
     @Transactional

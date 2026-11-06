@@ -24,6 +24,7 @@ function search() {
       <span>新人立减 ¥10</span>
       <i />
       <span>定制商品支持工期保障，超时自动赔付</span>
+      <RouterLink to="/help" class="promo__help">帮助 / 客服</RouterLink>
     </div>
   </div>
 
@@ -36,6 +37,7 @@ function search() {
 
       <nav class="nav">
         <RouterLink to="/products">全部商品</RouterLink>
+        <RouterLink to="/favorites">收藏夹</RouterLink>
         <a href="/#craft">手作专区</a>
         <a href="/#about">关于</a>
       </nav>
@@ -56,7 +58,7 @@ function search() {
         <RouterLink v-if="!auth.user" to="/login" class="login-link">登录</RouterLink>
         <template v-else>
           <RouterLink to="/orders" class="order-link">我的订单</RouterLink>
-          <span class="nick">{{ auth.user.nickname }}</span>
+          <RouterLink to="/account" class="nick">{{ auth.user.nickname }}</RouterLink>
           <button class="logout" @click="auth.logout()">退出</button>
         </template>
       </div>
@@ -79,6 +81,8 @@ function search() {
   font-size: 12px;
   letter-spacing: 0.06em;
 }
+.promo__help { margin-left: auto; color: #efe6d6; text-decoration: underline; text-underline-offset: 3px; }
+.promo__help:hover { color: #fff; }
 .promo__inner {
   display: flex;
   align-items: center;
@@ -153,7 +157,8 @@ function search() {
 .auth { display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--muted); }
 .login-link { padding: 6px 14px; border: 1px solid var(--line); border-radius: 999px; color: var(--ink-soft); }
 .login-link:hover { border-color: var(--rust); color: var(--rust); }
-.nick { color: var(--ink-soft); }
+.nick { color: var(--ink-soft); text-decoration: none; }
+.nick:hover { color: var(--rust); }
 .order-link { color: var(--ink-soft); padding: 6px 4px; }
 .order-link:hover { color: var(--rust); }
 .logout { border: 0; background: none; color: var(--muted); cursor: pointer; font-size: 12px; }

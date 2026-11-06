@@ -6,12 +6,13 @@ param(
     [int]$MaxPerProduct = 3,
     [int]$PauseSeconds = 55,
     [int]$MaxAttempts = 6,
+    [int[]]$Only = @(),
     [string]$Manifest = (Join-Path $PSScriptRoot 'manifest.json'),
     [string]$OutDir = (Join-Path $PSScriptRoot '../../infra/demo-assets/images')
 )
 
 $ErrorActionPreference = 'Stop'
-$style = ', e-commerce catalog photography, high key lighting, sharp focus, no props, no scenery, centered, no text'
+$style = ', e-commerce catalog photography, high key lighting, sharp focus, no props, no scenery, no people, no humans, no children, centered, no text'
 $packagingHint = ', retail packaging beside the product'
 $m = Get-Content $Manifest -Raw -Encoding UTF8 | ConvertFrom-Json
 $resolvedPath = Join-Path $PSScriptRoot 'resolved.json'
@@ -38,6 +39,7 @@ function Remove-Watermark([string]$file) {
 $total = 0
 foreach ($p in $m.products) {
     if ($Pilot -and -not $p.pilot) { continue }
+    if ($Only.Count -gt 0 -and $Only -notcontains $p.id) { continue }
     $dir = Join-Path $OutDir "products/$($p.id)"
     New-Item -ItemType Directory -Force -Path $dir | Out-Null
     $count = [Math]::Min($MaxPerProduct, $p.count)
