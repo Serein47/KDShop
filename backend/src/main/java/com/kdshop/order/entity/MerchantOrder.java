@@ -24,6 +24,8 @@ public class MerchantOrder {
     private Integer refundedAmountCent;
     private LocalDateTime shippedAt;
     private LocalDateTime completedAt;
+    private String carrier;
+    private String trackingNo;
     private Integer settled;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
