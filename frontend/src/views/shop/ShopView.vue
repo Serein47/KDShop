@@ -3,9 +3,35 @@ import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { fetchShop, fetchShopProducts, type ProductCard, type ShopPage } from '@/api/catalog'
 import ProductCardView from '@/components/ProductCardView.vue'
+import { followShop, unfollowShop } from '@/api/favorite'
+import { useAuthStore } from '@/stores/auth'
+import { ElMessage } from 'element-plus'
 
 const route = useRoute()
 const router = useRouter()
+const auth = useAuthStore()
+const following = ref(false)
+
+async function toggleFollow() {
+  if (!auth.user) {
+    router.push({ path: '/login', query: { redirect: route.fullPath } })
+    return
+  }
+  if (!shop.value) return
+  try {
+    if (following.value) {
+      await unfollowShop(shop.value.id)
+      following.value = false
+      ElMessage.success('已取消关注')
+    } else {
+      await followShop(shop.value.id)
+      following.value = true
+      ElMessage.success('已关注该店铺')
+    }
+  } catch (e: any) {
+    ElMessage.error(e?.response?.data?.message || '操作失败')
+  }
+}
 const shop = ref<ShopPage | null>(null)
 const products = ref<ProductCard[]>([])
 const total = ref(0)
@@ -17,6 +43,7 @@ watch(
   () => route.params.id,
   async (id) => {
     shop.value = await fetchShop(id as string)
+    following.value = Boolean(shop.value?.following)
     const result = await fetchShopProducts(id as string, page.value, 12)
     products.value = result.items
     total.value = result.total
@@ -34,6 +61,9 @@ function goPage(target: number) {
     <header v-if="shop" class="banner">
       <p class="eyebrow">Workshop</p>
       <h1>{{ shop.shopName }}</h1>
+        <button class="follow-btn" :class="{ on: following }" @click="toggleFollow">
+          {{ following ? '已关注' : '关注店铺' }}
+        </button>
       <p class="desc">{{ shop.description }}</p>
       <p class="meta">{{ shop.productCount }} 件在售 · 入场于 {{ shop.createdAt.slice(0, 10) }}</p>
     </header>
@@ -81,4 +111,15 @@ function goPage(target: number) {
 @media (max-width: 900px) {
   .grid { grid-template-columns: repeat(2, 1fr); }
 }
+.follow-btn {
+  margin-top: 8px;
+  padding: 7px 16px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: none;
+  font-size: 13px;
+  color: var(--muted);
+  cursor: pointer;
+}
+.follow-btn.on { border-color: var(--rust); color: var(--rust); background: var(--rust-soft); }
 </style>
