@@ -21,6 +21,17 @@ function toggleCategory(id: number) {
   else next.add(id)
   expanded.value = next
 }
+function expandFor(categoryId?: number) {
+  if (!categoryId) return
+  const next = new Set(expanded.value)
+  for (const top of categories.value) {
+    if (top.id === categoryId || top.children?.some((c) => c.id === categoryId)) {
+      next.add(top.id)
+    }
+  }
+  expanded.value = next
+}
+
 const generalCategories = computed(() => categories.value.filter((c) => !c.featured))
 const featuredCategories = computed(() => categories.value.filter((c) => c.featured))
 
@@ -69,7 +80,10 @@ watch(
   { immediate: true },
 )
 
-fetchCategories().then((value) => (categories.value = value))
+fetchCategories().then((value) => {
+  categories.value = value
+  expandFor(query.value.categoryId)
+})
 fetchTags().then((value) => (tags.value = value))
 
 function findCategory(id: number): string {
@@ -80,6 +94,8 @@ function findCategory(id: number): string {
   }
   return String(id)
 }
+
+watch(() => query.value.categoryId, (id) => expandFor(id))
 
 function apply(patch: Record<string, string | number | undefined>) {
   const next: Record<string, string> = {}
