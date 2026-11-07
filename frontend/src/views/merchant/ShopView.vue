@@ -75,6 +75,13 @@ async function save() {
     <div v-if="loading" class="state">加载中…</div>
 
     <template v-else>
+      <nav class="quick">
+        <RouterLink to="/merchant/products">商品管理</RouterLink>
+        <RouterLink to="/merchant/orders">本店订单</RouterLink>
+        <RouterLink to="/merchant/refunds">退款处理</RouterLink>
+        <RouterLink to="/merchant/settlements">结算单</RouterLink>
+      </nav>
+
       <section v-if="dashboard" class="stats">
         <div class="stat"><span>在售商品</span><strong>{{ dashboard.onSaleProducts }}</strong></div>
         <div class="stat"><span>待发货</span><strong>{{ dashboard.pendingShipCount }}</strong></div>
@@ -118,6 +125,9 @@ async function save() {
 <style scoped>
 .shop { padding-top: 48px; max-width: 900px; }
 h1 { font-size: 34px; margin: 6px 0 22px; }
+.quick { display: flex; gap: 16px; font-size: 13px; margin-bottom: 18px; }
+.quick a { color: var(--ink-soft); }
+.quick a:hover { color: var(--rust); }
 .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 18px; }
 .stat { background: #fff; border-radius: 14px; padding: 18px 20px; box-shadow: var(--shadow-sm); display: grid; gap: 6px; }
 .stat span { font-size: 12px; color: var(--muted); }
