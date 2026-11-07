@@ -20,6 +20,8 @@ import com.kdshop.order.mapper.OrderStatusLogMapper;
 import com.kdshop.refund.dto.RefundView;
 import com.kdshop.refund.entity.Refund;
 import com.kdshop.refund.mapper.RefundMapper;
+import com.kdshop.admin.AuditService;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -35,6 +37,9 @@ import java.util.stream.Collectors;
 /** 退款：顾客按子单申请，商家审核；通过后退款金额计入子单已退金额。 */
 @Service
 public class RefundService {
+
+    @Autowired(required = false)
+    private AuditService auditService;
 
     private final RefundMapper refundMapper;
     private final MerchantOrderMapper merchantOrderMapper;
@@ -163,6 +168,10 @@ public class RefundService {
 
         Order order = orderMapper.selectById(refund.getOrderId());
         writeLog(refund, "REFUNDED");
+        if (auditService != null) {
+            auditService.record("MERCHANT", shop.getId(), "REFUND_APPROVE", "REFUND",
+                    refund.getRefundNo(), java.util.Map.of("status", "PENDING"), java.util.Map.of("status", "REFUNDED"));
+        }
         notify(order, refund, "退款已完成", now);
         return toView(refund, sub, order);
     }
@@ -183,6 +192,10 @@ public class RefundService {
 
         Order order = orderMapper.selectById(refund.getOrderId());
         writeLog(refund, "REJECTED");
+        if (auditService != null) {
+            auditService.record("MERCHANT", shop.getId(), "REFUND_REJECT", "REFUND",
+                    refund.getRefundNo(), java.util.Map.of("status", "PENDING"), java.util.Map.of("status", "REJECTED"));
+        }
         notify(order, refund, "退款被驳回：" + reason, LocalDateTime.now());
         MerchantOrder sub = merchantOrderMapper.selectById(refund.getMerchantOrderId());
         return toView(refund, sub, order);
