@@ -52,7 +52,7 @@ function search() {
       <RouterLink v-if="auth.hasRole('MERCHANT')" to="/merchant/orders" class="merchant-link">订单</RouterLink>
       <RouterLink v-if="auth.hasRole('MERCHANT')" to="/merchant/products" class="merchant-link">商品</RouterLink>
       <RouterLink v-if="auth.hasRole('MERCHANT')" to="/merchant/refunds" class="merchant-link">退款</RouterLink>
-      <RouterLink v-if="auth.hasRole('ADMIN')" to="/admin/merchants" class="merchant-link">商家审核</RouterLink>
+      <RouterLink v-if="auth.hasRole('ADMIN')" to="/admin" class="merchant-link">平台后台</RouterLink>
 
       <div class="auth">
         <RouterLink v-if="!auth.user" to="/login" class="login-link">登录</RouterLink>

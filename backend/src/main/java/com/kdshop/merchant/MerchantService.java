@@ -13,6 +13,8 @@ import com.kdshop.merchant.dto.ApplyRequest;
 import com.kdshop.merchant.dto.MerchantView;
 import com.kdshop.merchant.dto.ShopProfileRequest;
 import com.kdshop.merchant.dto.ShopProfileView;
+import com.kdshop.admin.AuditService;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -23,6 +25,9 @@ import java.util.List;
 /** 商家入驻：申请、查看状态、平台审核。 */
 @Service
 public class MerchantService {
+
+    @Autowired(required = false)
+    private AuditService auditService;
 
     private final ShopMapper shopMapper;
     private final UserRoleMapper userRoleMapper;
@@ -96,6 +101,10 @@ public class MerchantService {
         shop.setApprovedBy(currentUserId());
         shopMapper.updateById(shop);
         grantMerchantRole(shop.getUserId());
+        if (auditService != null) {
+            auditService.record("ADMIN", currentUserId(), "MERCHANT_APPROVE", "MERCHANT",
+                    String.valueOf(shopId), java.util.Map.of("status", "PENDING"), java.util.Map.of("status", "ACTIVE"));
+        }
         return toView(shop);
     }
 
@@ -109,6 +118,10 @@ public class MerchantService {
         shop.setStatus("REJECTED");
         shop.setRejectReason(reason);
         shopMapper.updateById(shop);
+        if (auditService != null) {
+            auditService.record("ADMIN", currentUserId(), "MERCHANT_REJECT", "MERCHANT",
+                    String.valueOf(shopId), java.util.Map.of("status", "PENDING"), java.util.Map.of("status", "REJECTED"));
+        }
         return toView(shop);
     }
 
