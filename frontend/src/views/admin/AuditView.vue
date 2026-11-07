@@ -45,6 +45,7 @@ function fmt(value?: string) {
       <nav class="links">
         <RouterLink to="/admin">平台看板</RouterLink>
         <RouterLink to="/admin/merchants">商家审核</RouterLink>
+        <RouterLink to="/admin/settlements">结算</RouterLink>
       </nav>
     </header>
 
