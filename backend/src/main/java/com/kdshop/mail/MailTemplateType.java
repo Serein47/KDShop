@@ -11,7 +11,8 @@ public enum MailTemplateType {
     ORDER_CREATED("订单 {{orderNo}} 已创建，请在 {{payDeadline}} 前完成支付"),
     PAYMENT_SUCCESS("支付成功，订单 {{orderNo}} 正在备货"),
     ORDER_SHIPPED("你的订单 {{orderNo}} 已发货"),
-    ORDER_CANCELLED("订单 {{orderNo}} 已取消");
+    ORDER_CANCELLED("订单 {{orderNo}} 已取消"),
+    REFUND_RESULT("退款单 {{refundNo}} 已处理");
 
     private final String subject;
 

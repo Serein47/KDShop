@@ -47,11 +47,11 @@ function search() {
         <span v-if="cart.count" class="cart-badge">{{ cart.count }}</span>
       </RouterLink>
 
-      <RouterLink v-if="auth.user" :to="auth.hasRole('MERCHANT') ? '/merchant/orders' : '/merchant/apply'" class="merchant-link">
-        {{ auth.hasRole('MERCHANT') ? '商家中心' : '商家入驻' }}
-      </RouterLink>
+      <RouterLink v-if="auth.user && !auth.hasRole('MERCHANT')" to="/merchant/apply" class="merchant-link">商家入驻</RouterLink>
       <RouterLink v-if="auth.hasRole('MERCHANT')" to="/merchant/shop" class="merchant-link">店铺</RouterLink>
-      <RouterLink v-if="auth.hasRole('MERCHANT')" to="/merchant/products" class="merchant-link">商品管理</RouterLink>
+      <RouterLink v-if="auth.hasRole('MERCHANT')" to="/merchant/orders" class="merchant-link">订单</RouterLink>
+      <RouterLink v-if="auth.hasRole('MERCHANT')" to="/merchant/products" class="merchant-link">商品</RouterLink>
+      <RouterLink v-if="auth.hasRole('MERCHANT')" to="/merchant/refunds" class="merchant-link">退款</RouterLink>
       <RouterLink v-if="auth.hasRole('ADMIN')" to="/admin/merchants" class="merchant-link">商家审核</RouterLink>
 
       <div class="auth">
@@ -114,8 +114,8 @@ function search() {
   font-size: 14px;
   box-shadow: 0 6px 14px rgba(217,72,15,.28);
 }
-.brand__text { font-family: var(--serif); font-size: 17px; letter-spacing: 0.1em; }
-.nav { display: flex; gap: 26px; font-size: 14px; color: var(--ink-soft); }
+.brand__text { white-space: nowrap; font-family: var(--serif); font-size: 17px; letter-spacing: 0.1em; }
+.nav { display: flex; gap: 16px; font-size: 13px; color: var(--ink-soft); white-space: nowrap; }
 .nav a { position: relative; padding: 6px 0; }
 .nav a::after {
   content: "";
@@ -134,7 +134,7 @@ function search() {
 .nav__plain { color: var(--muted); }
 .nav a:hover::after { transform: scaleX(1); }
 
-.cart-link {
+.cart-link { white-space: nowrap;
   position: relative;
   margin-left: auto;
   font-size: 14px;
@@ -157,9 +157,9 @@ function search() {
   line-height: 18px;
   text-align: center;
 }
-.merchant-link { font-size: 13px; color: var(--muted); padding: 6px 10px; border-radius: 999px; }
+.merchant-link { font-size: 12px; color: var(--muted); padding: 5px 8px; border-radius: 999px; white-space: nowrap; }
 .merchant-link:hover { color: var(--rust); }
-.auth { display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--muted); }
+.auth { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); white-space: nowrap; }
 .login-link { padding: 6px 14px; border: 1px solid var(--line); border-radius: 999px; color: var(--ink-soft); }
 .login-link:hover { border-color: var(--rust); color: var(--rust); }
 .nick { color: var(--ink-soft); text-decoration: none; }

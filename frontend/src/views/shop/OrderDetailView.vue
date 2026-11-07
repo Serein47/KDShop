@@ -10,6 +10,7 @@ import {
   type SubOrderView,
 } from '@/api/order'
 import { createPayment } from '@/api/payment'
+import { applyRefund } from '@/api/refund'
 import { useAuthStore } from '@/stores/auth'
 import { yuan } from '@/api/catalog'
 import { mediaUrl } from '@/api/media'
@@ -30,6 +31,9 @@ const order = ref<OrderDetail | null>(null)
 const loading = ref(true)
 const failed = ref(false)
 const busy = ref(false)
+const refundDialog = ref(false)
+const refundSub = ref<SubOrderView | null>(null)
+const refundReason = ref('')
 
 const orderNo = computed(() => String(route.params.orderNo ?? ''))
 const canPay = computed(() => !!order.value && isPayable(order.value.status))
@@ -92,6 +96,31 @@ async function cancel() {
     await load()
   } catch (e: any) {
     ElMessage.error(e?.response?.data?.message || '取消失败')
+  } finally {
+    busy.value = false
+  }
+}
+
+function openRefund(sub: SubOrderView) {
+  refundSub.value = sub
+  refundReason.value = ''
+  refundDialog.value = true
+}
+
+async function submitRefund() {
+  if (!refundSub.value) return
+  if (!refundReason.value.trim()) {
+    ElMessage.warning('请填写退款原因')
+    return
+  }
+  busy.value = true
+  try {
+    await applyRefund(refundSub.value.subOrderNo, refundReason.value.trim())
+    ElMessage.success('退款申请已提交，等待商家处理')
+    refundDialog.value = false
+    await load()
+  } catch (e: any) {
+    ElMessage.error(e?.response?.data?.message || '提交失败')
   } finally {
     busy.value = false
   }
@@ -223,6 +252,13 @@ function actorLabel(actor: string): string {
               <div class="sub__right">
                 <span>子单实付 <strong>¥{{ yuan(sub.payAmount) }}</strong></span>
                 <button
+                  v-if="['PENDING_SHIPMENT', 'SHIPPED', 'COMPLETED'].includes(sub.status)"
+                  class="btn btn--ghost btn--sm"
+                  @click="openRefund(sub)"
+                >
+                  申请退款
+                </button>
+                <button
                   v-if="sub.actions.includes('CONFIRM')"
                   class="btn btn--solid btn--sm"
                   :disabled="busy"
@@ -277,6 +313,15 @@ function actorLabel(actor: string): string {
           </section>
         </aside>
       </div>
+
+      <el-dialog v-model="refundDialog" title="申请退款" width="460px">
+        <p class="muted">子单 {{ refundSub?.subOrderNo }} · 可退 ¥{{ yuan(refundSub?.payAmount ?? 0) }}</p>
+        <textarea v-model="refundReason" rows="3" class="refund-input" placeholder="说明退款原因，例如：尺寸不合适 / 商品破损" />
+        <template #footer>
+          <button class="btn btn--ghost" @click="refundDialog = false">取消</button>
+          <button class="btn btn--solid" :disabled="busy" @click="submitRefund">提交申请</button>
+        </template>
+      </el-dialog>
     </template>
   </div>
 </template>
@@ -357,6 +402,7 @@ function actorLabel(actor: string): string {
 
 .sub__foot { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding-top: 14px; flex-wrap: wrap; }
 .ship { margin: 0; font-size: 12px; color: var(--ink-soft); }
+.refund-input { width: 100%; box-sizing: border-box; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; font-size: 14px; font-family: inherit; resize: vertical; }
 .sub__right { display: flex; align-items: center; gap: 14px; margin-left: auto; font-size: 12px; }
 .sub__right strong { font-size: 15px; }
 
