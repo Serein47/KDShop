@@ -42,6 +42,8 @@ class RefundServiceTest {
     @Mock private OrderStatusLogMapper statusLogMapper;
     @Mock private EmailOutboxMapper emailOutboxMapper;
     @Mock private UserMapper userMapper;
+    @Mock private com.kdshop.auth.mapper.RoleMapper roleMapper;
+    @Mock private com.kdshop.auth.mapper.UserRoleMapper userRoleMapper;
 
     private RefundService service;
 
@@ -49,6 +51,8 @@ class RefundServiceTest {
     void setUp() {
         service = new RefundService(refundMapper, merchantOrderMapper, orderMapper, shopMapper,
                 statusLogMapper, emailOutboxMapper, userMapper, new ObjectMapper());
+        org.springframework.test.util.ReflectionTestUtils.setField(service, "roleMapper", roleMapper);
+        org.springframework.test.util.ReflectionTestUtils.setField(service, "userRoleMapper", userRoleMapper);
         SecurityContextHolder.getContext().setAuthentication(
                 UsernamePasswordAuthenticationToken.authenticated(1L, null, List.of()));
     }
