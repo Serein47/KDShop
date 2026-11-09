@@ -15,6 +15,7 @@ const submitting = ref(false)
 const carriers = ['顺丰速运', '中通快递', '圆通速递', '韵达快递', '京东物流']
 
 const tabs = [
+  { value: '', label: '全部' },
   { value: 'PENDING_SHIPMENT', label: '待发货' },
   { value: 'SHIPPED', label: '已发货' },
   { value: 'COMPLETED', label: '已完成' },

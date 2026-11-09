@@ -53,7 +53,7 @@ function openEdit(item: MerchantProduct) {
     name: item.name,
     subtitle: item.subtitle ?? '',
     categoryId: item.categoryId,
-    price: item.priceMin,
+    price: item.priceMin / 100,
     stock: item.stock,
     mainImage: item.mainImage ?? '',
   }
@@ -77,7 +77,7 @@ async function onFile(event: Event) {
 }
 
 async function save() {
-  if (!form.value.name.trim() || !form.value.categoryId || form.value.price <= 0) {
+  if (!form.value.name.trim() || !form.value.categoryId || !(form.value.price > 0)) {
     ElMessage.warning('请填写名称、类目和价格')
     return
   }
@@ -87,7 +87,7 @@ async function save() {
       name: form.value.name.trim(),
       subtitle: form.value.subtitle || undefined,
       categoryId: form.value.categoryId,
-      price: form.value.price,
+      price: Math.round(form.value.price * 100),
       stock: form.value.stock,
       mainImage: form.value.mainImage || undefined,
     }
@@ -162,7 +162,7 @@ async function toggle(item: MerchantProduct) {
           </select>
         </label>
         <div class="row">
-          <label>价格（分）<input v-model.number="form.price" type="number" min="1" /></label>
+          <label>价格（元）<input v-model.number="form.price" type="number" min="0.01" step="0.01" /></label>
           <label>库存<input v-model.number="form.stock" type="number" min="0" /></label>
         </div>
         <label>主图

@@ -95,7 +95,7 @@ async function save() {
           <div v-for="point in dashboard.trend" :key="point.date" class="bar">
             <div class="bar__fill" :style="{ height: Math.max(4, (point.amount / maxAmount) * 96) + 'px' }" />
             <span class="bar__label">{{ point.date.slice(5) }}</span>
-            <span class="bar__value">{{ yuan(point.amount) }}</span>
+            <span class="bar__value">{{ point.orders }} 单 · ¥{{ yuan(point.amount) }}</span>
           </div>
         </div>
       </section>
