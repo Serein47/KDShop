@@ -10,6 +10,7 @@ const loading = ref(true)
 const busy = ref(false)
 
 const tabs = [
+  { value: '', label: '全部' },
   { value: 'PENDING', label: '待处理' },
   { value: 'REFUNDED', label: '已退款' },
   { value: 'REJECTED', label: '已驳回' },
