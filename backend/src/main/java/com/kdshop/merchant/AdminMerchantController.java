@@ -3,6 +3,7 @@ package com.kdshop.merchant;
 import com.kdshop.common.ApiResponse;
 import com.kdshop.merchant.dto.MerchantView;
 import com.kdshop.merchant.dto.RejectRequest;
+import com.kdshop.merchant.dto.SuspendRequest;
 import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -32,6 +33,16 @@ public class AdminMerchantController {
     @PostMapping("/{id}/approve")
     public ApiResponse<MerchantView> approve(@PathVariable Long id) {
         return ApiResponse.ok(merchantService.approve(id));
+    }
+
+    @PostMapping("/{id}/suspend")
+    public ApiResponse<MerchantView> suspend(@PathVariable Long id, @Valid @RequestBody SuspendRequest request) {
+        return ApiResponse.ok(merchantService.suspend(id, request.reason()));
+    }
+
+    @PostMapping("/{id}/resume")
+    public ApiResponse<MerchantView> resume(@PathVariable Long id) {
+        return ApiResponse.ok(merchantService.resume(id));
     }
 
     @PostMapping("/{id}/reject")

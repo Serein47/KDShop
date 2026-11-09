@@ -11,6 +11,7 @@ public record MerchantView(
         String contactPhone,
         String status,
         String rejectReason,
+        String suspendReason,
         Integer commissionRate,
         LocalDateTime createdAt,
         LocalDateTime approvedAt

@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { approveMerchant, fetchMerchants, rejectMerchant, type Merchant } from '@/api/merchant'
+import {
+  approveMerchant, fetchMerchants, rejectMerchant, resumeMerchant, suspendMerchant, type Merchant,
+} from '@/api/merchant'
 
 const list = ref<Merchant[]>([])
 const status = ref<string>('PENDING')
@@ -10,6 +12,7 @@ const loading = ref(true)
 const tabs = [
   { value: 'PENDING', label: '待审核' },
   { value: 'ACTIVE', label: '已通过' },
+  { value: 'SUSPENDED', label: '已封禁' },
   { value: 'REJECTED', label: '已驳回' },
 ]
 
@@ -25,6 +28,10 @@ async function load() {
 }
 
 onMounted(load)
+
+function statusOf(item: Merchant): string {
+  return item.status
+}
 
 async function approve(item: Merchant) {
   try {
@@ -49,12 +56,37 @@ async function reject(item: Merchant) {
     if (e !== 'cancel') ElMessage.error(e?.response?.data?.message || '操作失败')
   }
 }
+
+async function suspend(item: Merchant) {
+  try {
+    const { value } = await ElMessageBox.prompt('填写封禁原因', '封禁店铺', {
+      inputPlaceholder: '例如：多次违规发货延迟',
+      inputValidator: (v) => (v && v.trim().length > 0) || '原因不能为空',
+    })
+    await suspendMerchant(item.id, value)
+    ElMessage.success('已封禁')
+    await load()
+  } catch (e: any) {
+    if (e !== 'cancel') ElMessage.error(e?.response?.data?.message || '操作失败')
+  }
+}
+
+async function resume(item: Merchant) {
+  try {
+    await ElMessageBox.confirm('解封后店铺立即可恢复营业，确认？', '解封店铺', { type: 'warning' })
+    await resumeMerchant(item.id)
+    ElMessage.success('已解封')
+    await load()
+  } catch (e: any) {
+    if (e !== 'cancel') ElMessage.error(e?.response?.data?.message || '操作失败')
+  }
+}
 </script>
 
 <template>
   <div class="admin container">
     <p class="eyebrow">Platform</p>
-    <h1>商家审核</h1>
+    <h1>商家管理</h1>
 
     <div class="tabs">
       <button v-for="tab in tabs" :key="tab.value" :class="{ on: status === tab.value }"
@@ -62,7 +94,7 @@ async function reject(item: Merchant) {
     </div>
 
     <div v-if="loading" class="state">加载中…</div>
-    <p v-else-if="!list.length" class="state">没有需要处理的申请。</p>
+    <p v-else-if="!list.length" class="state">这个状态下没有店铺。</p>
 
     <div v-else class="list">
       <article v-for="item in list" :key="item.id" class="row">
@@ -72,13 +104,20 @@ async function reject(item: Merchant) {
           <p class="desc">{{ item.description || '（未填写店铺介绍）' }}</p>
           <p class="muted">申请于 {{ item.createdAt?.slice(0, 10) }} · 佣金 {{ (item.commissionRate / 100).toFixed(1) }}%</p>
           <p v-if="item.rejectReason" class="reject">驳回原因：{{ item.rejectReason }}</p>
+          <p v-if="item.suspendReason" class="reject">封禁原因：{{ item.suspendReason }}</p>
         </div>
         <div class="row__actions">
-          <template v-if="item.status === 'PENDING'">
+          <template v-if="statusOf(item) === 'PENDING'">
             <button class="btn btn--solid" @click="approve(item)">通过</button>
             <button class="btn btn--ghost" @click="reject(item)">驳回</button>
           </template>
-          <span v-else class="tag">{{ item.status === 'ACTIVE' ? '已通过' : '已驳回' }}</span>
+          <template v-else-if="statusOf(item) === 'ACTIVE'">
+            <button class="btn btn--ghost" @click="suspend(item)">封禁</button>
+          </template>
+          <template v-else-if="statusOf(item) === 'SUSPENDED'">
+            <button class="btn btn--solid" @click="resume(item)">解封</button>
+          </template>
+          <span v-else class="tag">已驳回</span>
         </div>
       </article>
     </div>
@@ -88,7 +127,7 @@ async function reject(item: Merchant) {
 <style scoped>
 .admin { padding-top: 48px; max-width: 900px; }
 h1 { font-size: 34px; margin: 6px 0 20px; }
-.tabs { display: flex; gap: 10px; margin-bottom: 20px; }
+.tabs { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
 .tabs button { padding: 8px 16px; border: 1px solid var(--line); background: none; border-radius: 999px; cursor: pointer; font-size: 13px; }
 .tabs button.on { border-color: var(--rust); color: var(--rust); background: var(--rust-soft); }
 .list { display: grid; gap: 14px; }

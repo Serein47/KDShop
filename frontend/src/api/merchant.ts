@@ -9,6 +9,7 @@ export interface Merchant {
   contactPhone: string
   status: 'PENDING' | 'ACTIVE' | 'REJECTED'
   rejectReason?: string
+  suspendReason?: string
   commissionRate: number
   createdAt: string
   approvedAt?: string
@@ -44,5 +45,15 @@ export async function approveMerchant(id: number): Promise<Merchant> {
 
 export async function rejectMerchant(id: number, reason: string): Promise<Merchant> {
   const { data } = await http.post<ApiResponse<Merchant>>(`/admin/merchants/${id}/reject`, { reason })
+  return data.data
+}
+
+export async function suspendMerchant(id: number, reason: string): Promise<Merchant> {
+  const { data } = await http.post<ApiResponse<Merchant>>(`/admin/merchants/${id}/suspend`, { reason })
+  return data.data
+}
+
+export async function resumeMerchant(id: number): Promise<Merchant> {
+  const { data } = await http.post<ApiResponse<Merchant>>(`/admin/merchants/${id}/resume`)
   return data.data
 }

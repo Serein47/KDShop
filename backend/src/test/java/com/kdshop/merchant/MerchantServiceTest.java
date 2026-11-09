@@ -119,6 +119,38 @@ class MerchantServiceTest {
                 .isEqualTo(ErrorCode.RESOURCE_FORBIDDEN);
     }
 
+    @Test
+    void suspendingActiveShopMarksItSuspended() {
+        when(roleMapper.selectOne(any())).thenReturn(role(5L, "ADMIN"));
+        when(userRoleMapper.selectCount(any())).thenReturn(1L);
+        Shop shop = new Shop();
+        shop.setId(9L);
+        shop.setUserId(2L);
+        shop.setStatus("ACTIVE");
+        shop.setShopName("李四杂货铺");
+        when(shopMapper.selectById(9L)).thenReturn(shop);
+
+        var view = service.suspend(9L, "违规发货");
+
+        assertThat(view.status()).isEqualTo("SUSPENDED");
+        assertThat(view.suspendReason()).isEqualTo("违规发货");
+    }
+
+    @Test
+    void resumingNonSuspendedShopIsRejected() {
+        when(roleMapper.selectOne(any())).thenReturn(role(5L, "ADMIN"));
+        when(userRoleMapper.selectCount(any())).thenReturn(1L);
+        Shop shop = new Shop();
+        shop.setId(9L);
+        shop.setStatus("ACTIVE");
+        when(shopMapper.selectById(9L)).thenReturn(shop);
+
+        assertThatThrownBy(() -> service.resume(9L))
+                .isInstanceOf(BusinessException.class)
+                .extracting(e -> ((BusinessException) e).errorCode())
+                .isEqualTo(ErrorCode.SHOP_STATE_INVALID);
+    }
+
     private Role role(Long id, String code) {
         Role role = new Role();
         role.setId(id);
