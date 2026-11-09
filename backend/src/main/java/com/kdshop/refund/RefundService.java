@@ -21,6 +21,10 @@ import com.kdshop.refund.dto.RefundView;
 import com.kdshop.refund.entity.Refund;
 import com.kdshop.refund.mapper.RefundMapper;
 import com.kdshop.admin.AuditService;
+import com.kdshop.auth.entity.Role;
+import com.kdshop.auth.entity.UserRole;
+import com.kdshop.auth.mapper.RoleMapper;
+import com.kdshop.auth.mapper.UserRoleMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -40,6 +44,12 @@ public class RefundService {
 
     @Autowired(required = false)
     private AuditService auditService;
+
+    @Autowired(required = false)
+    private RoleMapper roleMapper;
+
+    @Autowired(required = false)
+    private UserRoleMapper userRoleMapper;
 
     private final RefundMapper refundMapper;
     private final MerchantOrderMapper merchantOrderMapper;
@@ -199,6 +209,77 @@ public class RefundService {
         notify(order, refund, "退款被驳回：" + reason, LocalDateTime.now());
         MerchantOrder sub = merchantOrderMapper.selectById(refund.getMerchantOrderId());
         return toView(refund, sub, order);
+    }
+
+    public List<RefundView> listAll(String status) {
+        requireAdmin();
+        LambdaQueryWrapper<Refund> query = new LambdaQueryWrapper<Refund>()
+                .orderByDesc(Refund::getId)
+                .last("LIMIT 100");
+        if (StringUtils.hasText(status)) {
+            query.eq(Refund::getStatus, status.toUpperCase());
+        }
+        return enrich(refundMapper.selectList(query));
+    }
+
+    @Transactional
+    public RefundView intervene(String refundNo, boolean approve, String reason) {
+        requireAdmin();
+        Long adminId = currentUserId();
+        Refund refund = refundMapper.selectOne(new LambdaQueryWrapper<Refund>().eq(Refund::getRefundNo, refundNo));
+        if (refund == null) {
+            throw new BusinessException(ErrorCode.REFUND_STATE_INVALID, "退款单不存在");
+        }
+        if (!"PENDING".equals(refund.getStatus())) {
+            throw new BusinessException(ErrorCode.REFUND_STATE_INVALID, "该退款单已处理");
+        }
+        LocalDateTime now = LocalDateTime.now();
+        refund.setStatus(approve ? "REFUNDED" : "REJECTED");
+        refund.setOperatorType("ADMIN");
+        refund.setOperatorId(adminId);
+        refund.setFinishedAt(now);
+        if (!approve) {
+            refund.setRejectReason(reason == null || reason.isBlank() ? "平台裁决不予退款" : reason);
+        }
+        refundMapper.updateById(refund);
+
+        MerchantOrder sub = merchantOrderMapper.selectById(refund.getMerchantOrderId());
+        if (approve && sub != null) {
+            int refunded = (sub.getRefundedAmountCent() == null ? 0 : sub.getRefundedAmountCent()) + refund.getAmountCent();
+            MerchantOrder patch = new MerchantOrder();
+            patch.setId(sub.getId());
+            patch.setRefundedAmountCent(refunded);
+            patch.setStatus(refunded >= sub.getPayAmountCent() ? "REFUNDED" : "PARTIALLY_REFUNDED");
+            merchantOrderMapper.updateById(patch);
+            refreshOrder(sub.getOrderId());
+        }
+
+        Order order = orderMapper.selectById(refund.getOrderId());
+        writeLog(refund, refund.getStatus());
+        if (auditService != null) {
+            auditService.record("ADMIN", adminId, "REFUND_INTERVENE", "REFUND", refundNo,
+                    java.util.Map.of("status", "PENDING"),
+                    java.util.Map.of("status", refund.getStatus(), "reason", String.valueOf(reason)));
+        }
+        notify(order, refund, approve ? "平台裁决：退款已完成" : "平台裁决：不予退款", now);
+        return toView(refund, sub, order);
+    }
+
+    private void requireAdmin() {
+        Long userId = currentUserId();
+        if (roleMapper == null || userRoleMapper == null) {
+            throw new BusinessException(ErrorCode.RESOURCE_FORBIDDEN);
+        }
+        Role role = roleMapper.selectOne(new LambdaQueryWrapper<Role>().eq(Role::getCode, "ADMIN"));
+        if (role == null) {
+            throw new BusinessException(ErrorCode.RESOURCE_FORBIDDEN);
+        }
+        Long count = userRoleMapper.selectCount(new LambdaQueryWrapper<UserRole>()
+                .eq(UserRole::getUserId, userId)
+                .eq(UserRole::getRoleId, role.getId()));
+        if (count == null || count == 0) {
+            throw new BusinessException(ErrorCode.RESOURCE_FORBIDDEN);
+        }
     }
 
     private void refreshOrder(Long orderId) {
