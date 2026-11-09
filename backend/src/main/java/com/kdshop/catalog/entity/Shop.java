@@ -22,6 +22,7 @@ public class Shop {
     private String licenseImage;
     private String status;
     private String rejectReason;
+    private String suspendReason;
     private Integer commissionRate;
     private LocalDateTime approvedAt;
     private Long approvedBy;

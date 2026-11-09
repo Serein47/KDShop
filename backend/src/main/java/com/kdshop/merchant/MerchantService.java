@@ -162,6 +162,40 @@ public class MerchantService {
                 shop.getCreatedAt());
     }
 
+    @Transactional
+    public MerchantView suspend(Long shopId, String reason) {
+        requireRole("ADMIN");
+        Shop shop = requireShop(shopId);
+        if (!"ACTIVE".equals(shop.getStatus())) {
+            throw new BusinessException(ErrorCode.SHOP_STATE_INVALID, "只有营业中的店铺可以封禁");
+        }
+        shop.setStatus("SUSPENDED");
+        shop.setSuspendReason(reason);
+        shopMapper.updateById(shop);
+        if (auditService != null) {
+            auditService.record("ADMIN", currentUserId(), "MERCHANT_SUSPEND", "MERCHANT",
+                    String.valueOf(shopId), java.util.Map.of("status", "ACTIVE"), java.util.Map.of("status", "SUSPENDED", "reason", reason));
+        }
+        return toView(shop);
+    }
+
+    @Transactional
+    public MerchantView resume(Long shopId) {
+        requireRole("ADMIN");
+        Shop shop = requireShop(shopId);
+        if (!"SUSPENDED".equals(shop.getStatus())) {
+            throw new BusinessException(ErrorCode.SHOP_STATE_INVALID, "只有已封禁的店铺可以解封");
+        }
+        shop.setStatus("ACTIVE");
+        shop.setSuspendReason(null);
+        shopMapper.updateById(shop);
+        if (auditService != null) {
+            auditService.record("ADMIN", currentUserId(), "MERCHANT_RESUME", "MERCHANT",
+                    String.valueOf(shopId), java.util.Map.of("status", "SUSPENDED"), java.util.Map.of("status", "ACTIVE"));
+        }
+        return toView(shop);
+    }
+
     private void grantMerchantRole(Long userId) {
         Role role = roleMapper.selectOne(new LambdaQueryWrapper<Role>().eq(Role::getCode, "MERCHANT"));
         if (role == null) {
@@ -203,7 +237,7 @@ public class MerchantService {
     private MerchantView toView(Shop shop) {
         return new MerchantView(shop.getId(), shop.getUserId(), shop.getShopName(), shop.getDescription(),
                 shop.getContactName(), shop.getContactPhone(), shop.getStatus(), shop.getRejectReason(),
-                shop.getCommissionRate(), shop.getCreatedAt(), shop.getApprovedAt());
+                shop.getSuspendReason(), shop.getCommissionRate(), shop.getCreatedAt(), shop.getApprovedAt());
     }
 
     private Long currentUserId() {
