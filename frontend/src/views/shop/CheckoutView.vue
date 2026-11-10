@@ -22,6 +22,20 @@ const showForm = ref(false)
 const form = ref({ receiver: '', phone: '', province: '', city: '', district: '', detail: '' })
 const submitting = ref(false)
 
+/**
+ * HTTP 环境（非 localhost）不是安全上下文，crypto.randomUUID 不存在，
+ * 直接用会抛 TypeError，表现就是「下单失败」且没有任何请求发出。
+ */
+function idempotencyKey(): string {
+  const c = globalThis.crypto as Crypto | undefined
+  if (c && typeof c.randomUUID === 'function') return c.randomUUID()
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (ch) => {
+    const r = (Math.random() * 16) | 0
+    const v = ch === 'x' ? r : (r & 0x3) | 0x8
+    return v.toString(16)
+  })
+}
+
 const selectedCoupon = computed(() => preview.value?.coupons.usable.find((c) => c.couponId === couponId.value))
 
 async function load(preserve = true) {
@@ -98,7 +112,7 @@ async function placeOrder() {
   try {
     const result = await createOrder(
       { addressId: addressId.value, couponId: couponId.value },
-      crypto.randomUUID(),
+      idempotencyKey(),
     )
     created.value = { orderNo: result.orderNo, payAmount: result.payAmount }
     await cart.load()
