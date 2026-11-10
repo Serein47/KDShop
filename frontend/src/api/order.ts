@@ -65,6 +65,7 @@ export interface OrderTimelineEntry {
 }
 
 export interface OrderItemView {
+  id: number
   image?: string
   name: string
   spec: Record<string, string>
