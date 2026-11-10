@@ -94,6 +94,34 @@ function Wait-Until([scriptblock]$Probe, [int]$TimeoutSec, [string]$What) {
     return $false
 }
 
+function Get-LogTail([string]$Path, [int]$Lines = 20) {
+    if (-not (Test-Path $Path)) { return @() }
+    return @(Get-Content $Path -Tail $Lines -ErrorAction SilentlyContinue)
+}
+
+function Show-LogTail([string]$Path, [string]$Label) {
+    $tail = Get-LogTail $Path
+    if ($tail.Count -eq 0) { return }
+    Write-Host "  $Label" -ForegroundColor DarkGray
+    $tail | ForEach-Object { Write-Host "    $_" -ForegroundColor DarkGray }
+}
+
+function Find-StartupError([string]$Path) {
+    # 启动即失败的标志：npm 找不到 bin、vite 配置加载失败、端口占用、权限不足
+    $pattern = 'is not recognized|Cannot find module|error when starting dev server|failed to load config|EADDRINUSE|EACCES|EPERM'
+    foreach ($line in (Get-LogTail $Path 40)) {
+        if ("$line" -match $pattern) { return "$line".Trim() }
+    }
+    return $null
+}
+
+function Test-FrontendDeps {
+    # `npm run dev` 实际执行 node_modules\.bin\vite(.cmd)；这两个缺任一，说明依赖没装全
+    # （例如安装被中断、node_modules 是拷贝来的），此时 cmd 只会报 'vite' is not recognized
+    return ((Test-Path (Join-Path $frontendDir 'node_modules\.bin\vite.cmd')) -and
+            (Test-Path (Join-Path $frontendDir 'node_modules\vite\package.json')))
+}
+
 function Stop-PortOwner([int]$Port, [string]$Label) {
     $pids = Get-PortPids $Port
     if (-not $pids) { Write-Warn2 "$Label 没有在运行"; return }
@@ -215,9 +243,70 @@ function Start-Backend {
     return $up
 }
 
+function Install-FrontendDeps {
+    Write-Step '前端依赖：node_modules'
+
+    if (-not (Test-Path (Join-Path $frontendDir 'package.json'))) {
+        Write-Fail "找不到 $frontendDir\package.json"
+        return $false
+    }
+    if (-not (Get-Command npm -ErrorAction SilentlyContinue)) {
+        Write-Fail 'npm 不在 PATH（需要 Node 20+），无法准备前端依赖'
+        return $false
+    }
+
+    $lock  = Join-Path $frontendDir 'package-lock.json'
+    $stamp = Join-Path $frontendDir 'node_modules\.package-lock.json'
+
+    if (Test-FrontendDeps) {
+        # 锁文件比安装结果新 = 有人加了依赖；增量安装即可，不用重建整个 node_modules
+        $stale = ((Test-Path $lock) -and (Test-Path $stamp) -and
+                  ((Get-Item $lock).LastWriteTimeUtc -gt (Get-Item $stamp).LastWriteTimeUtc))
+        if (-not $stale) {
+            Write-Ok '依赖完整（node_modules\.bin\vite.cmd 已就位）'
+            return $true
+        }
+        $cmd  = 'npm install --no-audit --no-fund'
+        $why  = 'package-lock.json 比安装结果新，增量安装'
+    } else {
+        # 全量按锁文件重装：npm ci 会重建 node_modules 与 .bin，能修掉中断留下的半成品
+        if (Test-Path $lock) {
+            $cmd = 'npm ci --no-audit --no-fund'
+        } else {
+            $cmd = 'npm install --no-audit --no-fund'
+        }
+        $why = '依赖缺失或不完整（node_modules\.bin\vite.cmd 不存在），按锁文件重装'
+    }
+
+    Write-Host "  $why：$cmd"
+    New-Item -ItemType Directory -Force -Path $logDir | Out-Null
+    $out = Join-Path $logDir 'frontend-install.log'
+    $err = Join-Path $logDir 'frontend-install.err.log'
+    $proc = Start-Process -FilePath $env:ComSpec -ArgumentList '/c', $cmd `
+        -WorkingDirectory $frontendDir -WindowStyle Hidden -PassThru `
+        -RedirectStandardOutput $out -RedirectStandardError $err
+    if (-not $proc.WaitForExit(600000)) {
+        try { $proc.Kill() } catch { }
+        Write-Fail '依赖安装超过 10 分钟未结束，已终止（日志 logs\frontend-install.log）'
+        return $false
+    }
+    # PS5.1 下 Start-Process -PassThru 配重定向偶尔取不到 ExitCode，所以以「事后依赖是否就位」为准
+    $code = $null
+    try { $code = $proc.ExitCode } catch { }
+    if (-not (Test-FrontendDeps) -or ($null -ne $code -and $code -ne 0)) {
+        Write-Fail "依赖安装失败（exit $code）"
+        Show-LogTail $out '安装日志尾部：'
+        Show-LogTail $err '安装错误尾部：'
+        return $false
+    }
+    Write-Ok '依赖安装完成（日志 logs\frontend-install.log）'
+    return $true
+}
+
 function Start-Frontend {
     Write-Step '前端：Vite (5173)'
     if (Get-PortPids $frontendPort) { Write-Warn2 "5173 已在监听，跳过"; return $true }
+    if (-not (Install-FrontendDeps)) { return $false }
 
     New-Item -ItemType Directory -Force -Path $logDir | Out-Null
     $out = Join-Path $logDir 'frontend.log'
@@ -226,14 +315,31 @@ function Start-Frontend {
         -WorkingDirectory $frontendDir -WindowStyle Hidden `
         -RedirectStandardOutput $out -RedirectStandardError $err | Out-Null
 
-    $up = Wait-Until {
+    # 不等满 120 秒：日志里出现启动错误就立刻收手，把原因打出来
+    $deadline = (Get-Date).AddSeconds(120)
+    $up = $false
+    $reason = $null
+    while ((Get-Date) -lt $deadline) {
         try {
             $r = Invoke-WebRequest -Uri "http://localhost:$frontendPort/" -UseBasicParsing -TimeoutSec 3
-            $r.StatusCode -eq 200
-        } catch { $false }
-    } 120 '前端 http://localhost:5173'
-    if ($up) { Write-Ok "前端就绪 http://localhost:$frontendPort （日志 logs\frontend.log）" }
-    return $up
+            if ($r.StatusCode -eq 200) { $up = $true; break }
+        } catch { }
+        foreach ($log in @($out, $err)) {
+            $hit = Find-StartupError $log
+            if ($hit) { $reason = $hit; break }
+        }
+        if ($reason) { break }
+        Start-Sleep -Seconds 2
+    }
+    if ($up) {
+        Write-Ok "前端就绪 http://localhost:$frontendPort （日志 logs\frontend.log）"
+        return $true
+    }
+    if ($reason) { Write-Fail "前端启动失败：$reason" }
+    else { Write-Fail "前端 http://localhost:$frontendPort 在 120 秒内未就绪" }
+    Show-LogTail $out 'logs\frontend.log 尾部：'
+    Show-LogTail $err 'logs\frontend.err.log 尾部：'
+    return $false
 }
 
 function Show-Status {

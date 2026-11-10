@@ -131,6 +131,7 @@ async function makeDefault(item: Address) {
         <RouterLink to="/favorites" class="qbtn"><span>♡</span>收藏夹</RouterLink>
         <RouterLink to="/cart" class="qbtn"><span>🛒</span>购物车</RouterLink>
         <RouterLink to="/refunds" class="qbtn"><span>↩</span>退款记录</RouterLink>
+        <RouterLink to="/coupons" class="qbtn"><span>🎟</span>优惠券</RouterLink>
       </div>
     </section>
 
@@ -171,7 +172,7 @@ h1 { font-size: 34px; margin: 6px 0 22px; }
 .link { border: 0; background: none; color: var(--ink-soft); font-size: 13px; cursor: pointer; }
 .link:hover { color: var(--rust); }
 .link--danger:hover { color: #c0392b; }
-.quick { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+.quick { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; }
 .qbtn { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 14px 10px; border: 1px solid var(--line); border-radius: 12px; color: var(--ink-soft); font-size: 14px; background: #fff; transition: all 0.2s; }
 .qbtn span { font-size: 16px; }
 .qbtn:hover { border-color: var(--rust); color: var(--rust); transform: translateY(-1px); }
