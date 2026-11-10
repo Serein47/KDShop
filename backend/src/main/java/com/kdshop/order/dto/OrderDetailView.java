@@ -41,6 +41,7 @@ public record OrderDetailView(
     }
 
     public record ItemView(
+            Long id,
             String name,
             String image,
             Map<String, String> spec,

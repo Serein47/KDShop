@@ -8,6 +8,7 @@ import { useCartStore } from '@/stores/cart'
 import { addFavorite, removeFavorite } from '@/api/favorite'
 import { useAuthStore } from '@/stores/auth'
 import { useRouter } from 'vue-router'
+import { fetchProductReviews, type ProductReview } from '@/api/review'
 
 const cart = useCartStore()
 const auth = useAuthStore()
@@ -21,6 +22,11 @@ const skuId = ref<number | null>(null)
 const optionValues = ref<Record<number, string>>({})
 const flawAck = ref(false)
 const qty = ref(1)
+const reviews = ref<ProductReview>({ average: 0, count: 0, items: [] })
+
+function stars(rating: number) {
+  return '★'.repeat(Math.max(0, Math.min(5, rating))) + '☆'.repeat(Math.max(0, 5 - rating))
+}
 
 const sku = computed(() => product.value?.skus.find((s) => s.id === skuId.value) ?? product.value?.skus[0])
 
@@ -104,6 +110,9 @@ onMounted(async () => {
   } catch {
     failed.value = true
   }
+  try {
+    if (product.value) reviews.value = await fetchProductReviews(product.value.id)
+  } catch { /* 评价加载失败不影响下单 */ }
 })
 </script>
 
@@ -228,12 +237,39 @@ onMounted(async () => {
       </section>
 
       <section v-if="product.description" class="desc" v-html="product.description" />
+
+      <section class="reviews">
+        <header class="reviews__head">
+          <h2>用户评价</h2>
+          <p v-if="reviews.count" class="muted">
+            平均 <strong>{{ reviews.average }}</strong> 分 · {{ reviews.count }} 条
+          </p>
+          <p v-else class="muted">还没有评价，买过的顾客可以来说说。</p>
+        </header>
+        <ul v-if="reviews.items.length" class="reviews__list">
+          <li v-for="r in reviews.items" :key="r.id">
+            <div class="reviews__meta">
+              <span class="reviews__stars">{{ stars(r.rating) }}</span>
+              <span class="muted">{{ r.nickname }} · {{ r.createdAt?.slice(0, 10) }}</span>
+            </div>
+            <p>{{ r.content }}</p>
+          </li>
+        </ul>
+      </section>
     </template>
   </div>
 </template>
 
 <style scoped>
 .detail { padding-top: 40px; }
+.reviews { margin-top: 56px; border-top: 1px solid var(--line); padding-top: 32px; }
+.reviews__head { display: flex; align-items: baseline; gap: 16px; margin-bottom: 16px; }
+.reviews__head h2 { font-size: 22px; margin: 0; }
+.reviews__list { display: grid; gap: 14px; }
+.reviews__list li { background: #fff; border-radius: 14px; padding: 16px 18px; box-shadow: var(--shadow-sm); }
+.reviews__meta { display: flex; gap: 12px; align-items: baseline; margin-bottom: 6px; }
+.reviews__stars { color: var(--rust); letter-spacing: 2px; }
+.muted { color: var(--muted); font-size: 12px; }
 .crumb { display: flex; gap: 8px; font-size: 13px; color: var(--muted); margin-bottom: 26px; }
 .body { display: grid; grid-template-columns: 1fr 1fr; gap: 64px; align-items: start; }
 .meta-strip {

@@ -9,6 +9,7 @@ const auth = useAuthStore()
 
 const router = useRouter()
 const keyword = ref('')
+const merchantOpen = ref(false)
 
 function search() {
   if (!keyword.value.trim()) return
@@ -49,10 +50,16 @@ function search() {
       </RouterLink>
 
       <RouterLink v-if="auth.user && !auth.hasRole('MERCHANT')" to="/merchant/apply" class="merchant-link">商家入驻</RouterLink>
-      <RouterLink v-if="auth.hasRole('MERCHANT')" to="/merchant/shop" class="merchant-link">店铺</RouterLink>
-      <RouterLink v-if="auth.hasRole('MERCHANT')" to="/merchant/orders" class="merchant-link">订单</RouterLink>
-      <RouterLink v-if="auth.hasRole('MERCHANT')" to="/merchant/products" class="merchant-link">商品</RouterLink>
-      <RouterLink v-if="auth.hasRole('MERCHANT')" to="/merchant/refunds" class="merchant-link">退款</RouterLink>
+      <div v-if="auth.hasRole('MERCHANT')" class="merchant-menu" @mouseenter="merchantOpen = true" @mouseleave="merchantOpen = false">
+        <button class="merchant-link" :aria-expanded="merchantOpen" @click="merchantOpen = !merchantOpen">商家中心 ▾</button>
+        <div v-if="merchantOpen" class="merchant-menu__list">
+          <RouterLink to="/merchant/shop" @click="merchantOpen = false">店铺概览</RouterLink>
+          <RouterLink to="/merchant/products" @click="merchantOpen = false">商品管理</RouterLink>
+          <RouterLink to="/merchant/orders" @click="merchantOpen = false">本店订单</RouterLink>
+          <RouterLink to="/merchant/refunds" @click="merchantOpen = false">退款处理</RouterLink>
+          <RouterLink to="/merchant/settlements" @click="merchantOpen = false">结算单</RouterLink>
+        </div>
+      </div>
       <RouterLink v-if="auth.hasRole('ADMIN')" to="/admin" class="merchant-link">平台后台</RouterLink>
 
       <div class="auth">
@@ -82,6 +89,29 @@ function search() {
   font-size: 12px;
   letter-spacing: 0.06em;
 }
+.merchant-menu { position: relative; }
+.merchant-menu > .merchant-link { background: none; border: 0; cursor: pointer; font: inherit; }
+.merchant-menu__list {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 8px;
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: var(--shadow);
+  padding: 6px;
+  display: grid;
+  min-width: 132px;
+  z-index: 60;
+}
+.merchant-menu__list a {
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 13px;
+  color: var(--ink);
+  white-space: nowrap;
+}
+.merchant-menu__list a:hover { background: var(--rust-soft); color: var(--rust); }
 .promo__help { margin-left: auto; color: #efe6d6; text-decoration: underline; text-underline-offset: 3px; }
 .promo__help:hover { color: #fff; }
 .promo__inner {

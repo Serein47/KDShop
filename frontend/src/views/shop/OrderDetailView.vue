@@ -11,6 +11,7 @@ import {
 } from '@/api/order'
 import { createPayment } from '@/api/payment'
 import { applyRefund } from '@/api/refund'
+import { createReview, fetchMyReviews } from '@/api/review'
 import { useAuthStore } from '@/stores/auth'
 import { yuan } from '@/api/catalog'
 import { mediaUrl } from '@/api/media'
@@ -34,6 +35,11 @@ const busy = ref(false)
 const refundDialog = ref(false)
 const refundSub = ref<SubOrderView | null>(null)
 const refundReason = ref('')
+const reviewed = ref<Set<number>>(new Set())
+const reviewDialog = ref(false)
+const reviewItem = ref<{ id: number; name: string } | null>(null)
+const reviewRating = ref(5)
+const reviewContent = ref('')
 
 const orderNo = computed(() => String(route.params.orderNo ?? ''))
 const canPay = computed(() => !!order.value && isPayable(order.value.status))
@@ -53,6 +59,9 @@ async function load() {
   failed.value = false
   try {
     order.value = await fetchOrder(orderNo.value)
+    try {
+      reviewed.value = new Set((await fetchMyReviews()).map((r) => r.orderItemId))
+    } catch { /* 未登录或接口异常时不影响订单展示 */ }
   } catch (e: any) {
     if (e?.response?.status === 401) {
       router.replace({ path: '/login', query: { redirect: route.fullPath } })
@@ -119,6 +128,32 @@ async function submitRefund() {
     ElMessage.success('退款申请已提交，等待商家处理')
     refundDialog.value = false
     await load()
+  } catch (e: any) {
+    ElMessage.error(e?.response?.data?.message || '提交失败')
+  } finally {
+    busy.value = false
+  }
+}
+
+function openReview(item: { id: number; name: string }) {
+  reviewItem.value = item
+  reviewRating.value = 5
+  reviewContent.value = ''
+  reviewDialog.value = true
+}
+
+async function submitReview() {
+  if (!reviewItem.value) return
+  if (!reviewContent.value.trim()) {
+    ElMessage.warning('写点什么吧')
+    return
+  }
+  busy.value = true
+  try {
+    await createReview(reviewItem.value.id, { rating: reviewRating.value, content: reviewContent.value.trim() })
+    ElMessage.success('评价已提交')
+    reviewed.value = new Set([...reviewed.value, reviewItem.value.id])
+    reviewDialog.value = false
   } catch (e: any) {
     ElMessage.error(e?.response?.data?.message || '提交失败')
   } finally {
@@ -236,6 +271,8 @@ function actorLabel(actor: string): string {
                   <span>{{ specText(item.spec) }} · ¥{{ yuan(item.price) }} × {{ item.quantity }}</span>
                 </div>
                 <strong>¥{{ yuan(item.subtotal) }}</strong>
+                <button v-if="sub.status === 'COMPLETED' && !reviewed.has(item.id)" class="btn btn--ghost btn--sm item__review" @click="openReview(item)">评价</button>
+                <span v-else-if="sub.status === 'COMPLETED'" class="muted item__review">已评价</span>
               </div>
             </div>
 
@@ -314,6 +351,19 @@ function actorLabel(actor: string): string {
         </aside>
       </div>
 
+      <el-dialog v-model="reviewDialog" title="评价商品" width="460px">
+        <p class="muted">{{ reviewItem?.name }}</p>
+        <div class="review-form">
+          <el-rate v-model="reviewRating" />
+          <el-input v-model="reviewContent" type="textarea" :rows="4" maxlength="500" show-word-limit
+            placeholder="说说使用感受，帮助其他顾客判断" />
+        </div>
+        <template #footer>
+          <button class="btn btn--ghost" @click="reviewDialog = false">取消</button>
+          <button class="btn btn--solid" :disabled="busy" @click="submitReview">提交评价</button>
+        </template>
+      </el-dialog>
+
       <el-dialog v-model="refundDialog" title="申请退款" width="460px">
         <p class="muted">子单 {{ refundSub?.subOrderNo }} · 可退 ¥{{ yuan(refundSub?.payAmount ?? 0) }}</p>
         <textarea v-model="refundReason" rows="3" class="refund-input" placeholder="说明退款原因，例如：尺寸不合适 / 商品破损" />
@@ -327,6 +377,8 @@ function actorLabel(actor: string): string {
 </template>
 
 <style scoped>
+.item__review { margin-left: 12px; }
+.review-form { display: grid; gap: 14px; margin-top: 12px; }
 .detail { padding: 30px 0 96px; }
 .crumb { display: flex; gap: 8px; color: var(--muted); font-size: 12px; margin-bottom: 18px; }
 .crumb a:hover { color: var(--rust); }

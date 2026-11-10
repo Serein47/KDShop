@@ -168,7 +168,7 @@ public class OrderQueryService {
     }
 
     private OrderDetailView.ItemView toItemView(OrderItem item) {
-        return new OrderDetailView.ItemView(item.getProductName(), item.getProductImage(), readMap(item.getSkuSpec()),
+        return new OrderDetailView.ItemView(item.getId(), item.getProductName(), item.getProductImage(), readMap(item.getSkuSpec()),
                 item.getUnitPriceCent(), item.getQuantity(), item.getSubtotalCent());
     }
 
