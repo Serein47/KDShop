@@ -6,6 +6,14 @@
 
 ![首页](docs/screenshots/home.png)
 
+### 端到端测试
+
+```bash
+cd frontend && npm run e2e   # 需要后端 8081、前端 5180、Mailpit 8025
+```
+
+不在 CI 中运行；详见 docs/e2e.md。
+
 ## 技术栈
 
 | 层 | 选型 |
