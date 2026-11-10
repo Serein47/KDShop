@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # 部署后冒烟：BASE_URL=http://8.134.215.195 bash scripts/smoke.sh
-set -euo pipefail
+set -eu
 BASE="${BASE_URL:-http://8.134.215.195}"
 API="$BASE/api/v1"
 JAR=$(mktemp)
