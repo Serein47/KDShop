@@ -36,6 +36,7 @@ onMounted(async () => {
         <RouterLink to="/admin/products">商品</RouterLink>
         <RouterLink to="/admin/settlements">结算</RouterLink>
         <RouterLink to="/admin/coupons">优惠券</RouterLink>
+        <RouterLink to="/admin/users">账号</RouterLink>
         <RouterLink to="/admin/settlements">结算</RouterLink>
         <RouterLink to="/admin/audit">审计日志</RouterLink>
       </nav>

@@ -16,6 +16,7 @@ const router = createRouter({
     { path: '/merchant/orders', name: 'merchant-orders', component: () => import('@/views/merchant/OrdersView.vue') },
     { path: '/admin', name: 'admin-dashboard', component: () => import('@/views/admin/DashboardView.vue') },
     { path: '/admin/audit', name: 'admin-audit', component: () => import('@/views/admin/AuditView.vue') },
+    { path: '/admin/users', name: 'admin-users', component: () => import('@/views/admin/UsersView.vue') },
     { path: '/admin/orders', name: 'admin-orders', component: () => import('@/views/admin/OrdersView.vue') },
     { path: '/admin/refunds', name: 'admin-refunds', component: () => import('@/views/admin/RefundsView.vue') },
     { path: '/admin/categories', name: 'admin-categories', component: () => import('@/views/admin/CategoriesView.vue') },
