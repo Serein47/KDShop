@@ -1,13 +1,17 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
 import { ElMessage } from 'element-plus'
-import { createCoupon, fetchAdminCoupons, type Coupon } from '@/api/coupon'
+import { createCoupon, fetchAdminCoupons, grantCoupon, type Coupon } from '@/api/coupon'
 import { yuan } from '@/api/catalog'
 
 const list = ref<Coupon[]>([])
 const loading = ref(true)
 const dialog = ref(false)
 const saving = ref(false)
+const grantTarget = ref<Coupon | null>(null)
+const grantMode = ref<'all' | 'emails'>('all')
+const grantEmails = ref('')
+const granting = ref(false)
 const form = ref({
   name: '', type: 'THRESHOLD', value: 1000, minAmount: 9900, total: 200,
   startsAt: '', endsAt: '',
@@ -38,6 +42,38 @@ function openCreate() {
     startsAt: now.toISOString().slice(0, 10), endsAt: end.toISOString().slice(0, 10),
   }
   dialog.value = true
+}
+
+const grantDialog = ref(false)
+
+function openGrant(c: Coupon) {
+  grantTarget.value = c
+  grantMode.value = 'all'
+  grantEmails.value = ''
+  grantDialog.value = true
+}
+
+async function doGrant() {
+  if (!grantTarget.value) return
+  const emails = grantEmails.value.split(/[,，\s]+/).map((x) => x.trim()).filter(Boolean)
+  if (grantMode.value === 'emails' && !emails.length) {
+    ElMessage.warning('请填写至少一个邮箱')
+    return
+  }
+  granting.value = true
+  try {
+    const res = await grantCoupon(grantTarget.value.couponId, {
+      allUsers: grantMode.value === 'all',
+      emails: grantMode.value === 'emails' ? emails : [],
+    })
+    ElMessage.success(`发放 ${res.granted} 张，跳过 ${res.skipped} 张（已领过）`)
+    grantDialog.value = false
+    await load()
+  } catch (e: any) {
+    ElMessage.error(e?.response?.data?.message || '发放失败')
+  } finally {
+    granting.value = false
+  }
 }
 
 async function save() {
@@ -80,18 +116,34 @@ async function save() {
     <div v-if="loading" class="state">加载中…</div>
     <table v-else class="table">
       <thead>
-        <tr><th>名称</th><th>面额</th><th>门槛</th><th>已领 / 总量</th><th>有效期至</th></tr>
+        <tr><th>名称</th><th>面额</th><th>门槛</th><th>剩余</th><th>有效期至</th><th></th></tr>
       </thead>
       <tbody>
         <tr v-for="c in list" :key="c.couponId">
           <td>{{ c.name }}</td>
           <td>¥{{ yuan(c.value) }}</td>
           <td>{{ c.minAmount ? '满 ¥' + (c.minAmount / 100).toFixed(0) : '无门槛' }}</td>
-          <td>{{ c.remaining }} 剩</td>
+          <td>{{ c.remaining }}</td>
           <td>{{ c.expiresAt?.slice(0, 10) }}</td>
+          <td><button class="link" @click="openGrant(c)">发放</button></td>
         </tr>
       </tbody>
     </table>
+
+    <el-dialog v-model="grantDialog" :title="'发放：' + (grantTarget?.name || '')" width="440px">
+      <div class="form">
+        <label class="radio"><input v-model="grantMode" type="radio" value="all" /> 发给全部用户</label>
+        <label class="radio"><input v-model="grantMode" type="radio" value="emails" /> 只发给指定邮箱</label>
+        <label v-if="grantMode === 'emails'">邮箱（逗号或换行分隔）
+          <textarea v-model="grantEmails" rows="4" placeholder="customer2@kdshop.dev, merchant1@kdshop.dev" />
+        </label>
+        <p class="hint">已领过的用户会自动跳过。</p>
+      </div>
+      <template #footer>
+        <button class="btn btn--ghost" @click="grantDialog = false">取消</button>
+        <button class="btn btn--solid" :disabled="granting" @click="doGrant">{{ granting ? '发放中…' : '确认发放' }}</button>
+      </template>
+    </el-dialog>
 
     <el-dialog v-model="dialog" title="新建优惠券" width="480px">
       <div class="form">
@@ -131,5 +183,9 @@ th { color: var(--muted); font-weight: 500; }
 .row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 label { display: grid; gap: 6px; font-size: 13px; color: var(--muted); }
 input, select { padding: 9px 12px; border: 1px solid var(--line); border-radius: 10px; font-size: 14px; }
+.link { border: 0; background: none; color: var(--rust); cursor: pointer; font-size: 12px; }
+.radio { display: flex; align-items: center; gap: 8px; }
+textarea { padding: 9px 12px; border: 1px solid var(--line); border-radius: 10px; font-size: 13px; resize: vertical; }
+.hint { color: var(--muted); font-size: 12px; margin: 0; }
 .state { color: var(--muted); padding: 40px 0; }
 </style>

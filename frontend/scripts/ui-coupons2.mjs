@@ -1,0 +1,24 @@
+import { chromium } from 'playwright-core';
+const base = 'http://localhost:5180';
+const browser = await chromium.launch({ channel: 'msedge', headless: true });
+const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
+await page.goto(base + '/login', { waitUntil: 'networkidle' });
+await page.fill('input[type=email]', 'admin@kdshop.dev');
+await page.fill('input[type=password]', 'Demo@123456');
+await page.click('button.submit');
+await page.waitForTimeout(1800);
+await page.goto(base + '/admin/coupons', { waitUntil: 'networkidle' });
+await page.waitForTimeout(1200);
+await page.getByRole('button', { name: '发放' }).first().click();
+await page.waitForTimeout(600);
+await page.screenshot({ path: 'D:/web-ai-code/KDShop/.shots/admin-coupons-grant.png' });
+await page.keyboard.press('Escape');
+await page.waitForTimeout(400);
+
+await page.goto(base + '/coupons', { waitUntil: 'networkidle' });
+await page.waitForTimeout(1000);
+await page.getByRole('button', { name: /我的券/ }).click();
+await page.waitForTimeout(800);
+await page.screenshot({ path: 'D:/web-ai-code/KDShop/.shots/my-coupons.png' });
+console.log('ok');
+await browser.close();

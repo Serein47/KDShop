@@ -55,3 +55,8 @@ export async function createCoupon(payload: {
   const { data } = await http.post<ApiResponse<Coupon>>('/admin/coupons', payload)
   return data.data
 }
+
+export async function grantCoupon(id: number, payload: { emails: string[]; allUsers: boolean }): Promise<{ granted: number; skipped: number }> {
+  const { data } = await http.post<ApiResponse<{ granted: number; skipped: number }>>(`/admin/coupons/${id}/grant`, payload)
+  return data.data
+}

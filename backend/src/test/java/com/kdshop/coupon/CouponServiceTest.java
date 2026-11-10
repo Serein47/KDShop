@@ -35,12 +35,13 @@ class CouponServiceTest {
     @Mock private UserCouponMapper userCouponMapper;
     @Mock private RoleMapper roleMapper;
     @Mock private UserRoleMapper userRoleMapper;
+    @Mock private com.kdshop.auth.mapper.UserMapper userMapper;
 
     private CouponService service;
 
     @BeforeEach
     void setUp() {
-        service = new CouponService(couponMapper, userCouponMapper, roleMapper, userRoleMapper);
+        service = new CouponService(couponMapper, userCouponMapper, roleMapper, userRoleMapper, userMapper);
         SecurityContextHolder.getContext().setAuthentication(
                 UsernamePasswordAuthenticationToken.authenticated(1L, null, List.of()));
     }
