@@ -40,6 +40,8 @@ EOF
   echo "已生成 .env"
 fi
 docker compose up -d --remove-orphans
+# jar 是 bind mount，配置没变时 compose 不会重建容器，必须强制重建才能加载新 jar
+docker compose up -d --force-recreate backend
 docker compose ps
 REMOTE
 
