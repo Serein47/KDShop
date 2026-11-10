@@ -1,0 +1,19 @@
+# 生产 / ECS 演示：加载种子数据，邮件投递到内网 Mailpit
+spring:
+  flyway:
+    locations: classpath:db/migration,classpath:db/seed
+  datasource:
+    hikari:
+      maximum-pool-size: 8
+
+server:
+  port: ${SERVER_PORT:8081}
+
+kdshop:
+  mail:
+    mode: ${MAIL_MODE:SMTP}
+
+logging:
+  level:
+    root: INFO
+    com.kdshop: INFO
