@@ -50,6 +50,7 @@ function fmt(value?: string) {
         <RouterLink to="/admin/categories">类目</RouterLink>
         <RouterLink to="/admin/products">商品</RouterLink>
         <RouterLink to="/admin/settlements">结算</RouterLink>
+        <RouterLink to="/admin/coupons">优惠券</RouterLink>
       </nav>
     </header>
 
