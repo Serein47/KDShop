@@ -39,6 +39,7 @@ function search() {
         <RouterLink to="/products" class="nav__plain">全部商品</RouterLink>
         <a href="/#craft" class="nav__accent">手作专区</a>
         <RouterLink to="/favorites" class="nav__pill">♡ 收藏夹</RouterLink>
+        <RouterLink v-if="auth.user" to="/coupons" class="nav__pill">优惠券</RouterLink>
         <a href="/#about" class="nav__plain">关于</a>
       </nav>
 

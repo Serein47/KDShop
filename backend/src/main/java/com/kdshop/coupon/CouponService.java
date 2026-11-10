@@ -6,8 +6,10 @@ import com.kdshop.checkout.entity.UserCoupon;
 import com.kdshop.checkout.mapper.CouponMapper;
 import com.kdshop.checkout.mapper.UserCouponMapper;
 import com.kdshop.auth.entity.Role;
+import com.kdshop.auth.entity.User;
 import com.kdshop.auth.entity.UserRole;
 import com.kdshop.auth.mapper.RoleMapper;
+import com.kdshop.auth.mapper.UserMapper;
 import com.kdshop.auth.mapper.UserRoleMapper;
 import com.kdshop.common.BusinessException;
 import com.kdshop.common.ErrorCode;
@@ -32,13 +34,15 @@ public class CouponService {
     private final UserCouponMapper userCouponMapper;
     private final RoleMapper roleMapper;
     private final UserRoleMapper userRoleMapper;
+    private final UserMapper userMapper;
 
     public CouponService(CouponMapper couponMapper, UserCouponMapper userCouponMapper,
-                         RoleMapper roleMapper, UserRoleMapper userRoleMapper) {
+                         RoleMapper roleMapper, UserRoleMapper userRoleMapper, UserMapper userMapper) {
         this.couponMapper = couponMapper;
         this.userCouponMapper = userCouponMapper;
         this.roleMapper = roleMapper;
         this.userRoleMapper = userRoleMapper;
+        this.userMapper = userMapper;
     }
 
     public List<CouponView> available() {
@@ -147,6 +151,55 @@ public class CouponService {
         couponMapper.insert(coupon);
         return new CouponView(coupon.getId(), coupon.getName(), coupon.getType(), coupon.getValueCent(),
                 coupon.getMinAmountCent(), coupon.getTotal(), true, coupon.getEndsAt());
+    }
+
+    public record GrantResult(int granted, int skipped, int total) {
+    }
+
+    @Transactional
+    public GrantResult grant(Long couponId, List<String> emails, boolean allUsers) {
+        requireAdmin();
+        Coupon coupon = couponMapper.selectById(couponId);
+        if (coupon == null) {
+            throw new BusinessException(ErrorCode.PARAM_INVALID, "优惠券不存在");
+        }
+        List<User> targets;
+        if (allUsers) {
+            targets = userMapper.selectList(new LambdaQueryWrapper<User>());
+        } else {
+            List<String> clean = emails == null ? List.of() : emails.stream()
+                    .filter(StringUtils::hasText).map(String::trim).distinct().toList();
+            if (clean.isEmpty()) {
+                throw new BusinessException(ErrorCode.PARAM_INVALID, "请填写要发放的邮箱");
+            }
+            targets = userMapper.selectList(new LambdaQueryWrapper<User>().in(User::getEmail, clean));
+            if (targets.isEmpty()) {
+                throw new BusinessException(ErrorCode.PARAM_INVALID, "这些邮箱没有对应账号");
+            }
+        }
+        int granted = 0;
+        int skipped = 0;
+        for (User user : targets) {
+            Long exists = userCouponMapper.selectCount(new LambdaQueryWrapper<UserCoupon>()
+                    .eq(UserCoupon::getUserId, user.getId())
+                    .eq(UserCoupon::getCouponId, couponId));
+            if (exists != null && exists > 0) {
+                skipped++;
+                continue;
+            }
+            Long claimed = userCouponMapper.selectCount(new LambdaQueryWrapper<UserCoupon>()
+                    .eq(UserCoupon::getCouponId, couponId));
+            if (claimed != null && claimed >= coupon.getTotal()) {
+                break;
+            }
+            UserCoupon link = new UserCoupon();
+            link.setUserId(user.getId());
+            link.setCouponId(couponId);
+            link.setStatus("UNUSED");
+            userCouponMapper.insert(link);
+            granted++;
+        }
+        return new GrantResult(granted, skipped, targets.size());
     }
 
     private MyCouponView toMine(UserCoupon link, Coupon coupon) {
