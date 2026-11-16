@@ -45,7 +45,7 @@ class CheckoutServiceTest {
 
     private CheckoutService service;
 
-    private final MetaProperties meta = new MetaProperties("CNY", "Asia/Shanghai", 9900, 1000, 15, 15, 7);
+    private final MetaProperties meta = new MetaProperties("CNY", "Asia/Shanghai", 9900, 1000, 15, 15, 7, 24);
 
     @BeforeEach
     void setUp() {
@@ -117,6 +117,47 @@ class CheckoutServiceTest {
         assertThat(preview.summary().goodsAmount()).isEqualTo(11000);
         assertThat(preview.summary().payAmount())
                 .isEqualTo(preview.subOrders().stream().mapToInt(CheckoutPreview.SubOrder::payAmount).sum());
+    }
+
+    @Test
+    void preorderDepositIsSplitFromBalance() {
+        Sku sku = sku(10L, 100L, 9900, 10);
+        Product product = product(100L, 1L, "刻字胡桃木盒");
+        product.setSaleMode("CUSTOM");
+        product.setLeadDays(14);
+        product.setDepositRate(3000);
+        when(skuMapper.selectById(10L)).thenReturn(sku);
+        when(productMapper.selectById(100L)).thenReturn(product);
+        when(shopMapper.selectById(1L)).thenReturn(shop(1L, "甲店"));
+
+        CheckoutPreview preview = service.preview(new CheckoutRequest(null, null,
+                List.of(new CheckoutRequest.Item(10L, 1))));
+
+        assertThat(preview.summary().orderType()).isEqualTo("CUSTOM");
+        assertThat(preview.summary().deposit()).isEqualTo(2970);
+        assertThat(preview.summary().balance()).isEqualTo(6930);
+        assertThat(preview.summary().deposit() + preview.summary().balance())
+                .isEqualTo(preview.summary().payAmount());
+    }
+
+    @Test
+    void mixingStockAndPreorderIsRejected() {
+        when(skuMapper.selectById(10L)).thenReturn(sku(10L, 100L, 5000, 10));
+        when(skuMapper.selectById(11L)).thenReturn(sku(11L, 200L, 6000, 10));
+        when(productMapper.selectById(100L)).thenReturn(product(100L, 1L, "现货"));
+        Product custom = product(200L, 2L, "定制");
+        custom.setSaleMode("CUSTOM");
+        custom.setLeadDays(10);
+        custom.setDepositRate(3000);
+        when(productMapper.selectById(200L)).thenReturn(custom);
+        when(shopMapper.selectById(1L)).thenReturn(shop(1L, "甲店"));
+        when(shopMapper.selectById(2L)).thenReturn(shop(2L, "乙店"));
+
+        assertThatThrownBy(() -> service.preview(new CheckoutRequest(null, null,
+                List.of(new CheckoutRequest.Item(10L, 1), new CheckoutRequest.Item(11L, 1)))))
+                .isInstanceOf(BusinessException.class)
+                .extracting(e -> ((BusinessException) e).errorCode())
+                .isEqualTo(ErrorCode.PARAM_INVALID);
     }
 
     private Sku sku(Long id, Long productId, int price, int stock) {

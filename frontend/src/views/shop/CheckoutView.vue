@@ -37,6 +37,8 @@ function idempotencyKey(): string {
 }
 
 const selectedCoupon = computed(() => preview.value?.coupons.usable.find((c) => c.couponId === couponId.value))
+const isPreorder = computed(() => !!preview.value && preview.value.summary.orderType !== 'NORMAL')
+const depositLabel = computed(() => (preview.value?.summary.orderType === 'CUSTOM' ? '定制' : '预售'))
 
 async function load(preserve = true) {
   loading.value = true
@@ -141,9 +143,13 @@ async function placeOrder() {
       <p class="eyebrow">Order created</p>
       <h2>下单成功</h2>
       <p class="done__no">{{ created.orderNo }}</p>
-      <p class="done__amount">应付 ¥{{ yuan(created.payAmount) }}</p>
-      <p class="done__hint">订单已生成，去支付即可完成流程。</p>
-      <button class="btn btn--solid" :disabled="paying" @click="goPay">去支付</button>
+      <p class="done__amount">本次应付 ¥{{ yuan(created.payAmount) }}</p>
+      <p class="done__hint">
+        {{ isPreorder ? '订单已生成，先支付定金，商家开始制作；尾款在发货前支付。' : '订单已生成，去支付即可完成流程。' }}
+      </p>
+      <button class="btn btn--solid" :disabled="paying" @click="goPay">
+        {{ isPreorder ? '支付定金' : '去支付' }}
+      </button>
       <RouterLink :to="`/orders/${created.orderNo}`" class="btn btn--ghost">查看订单</RouterLink>
       <RouterLink to="/products" class="btn btn--ghost">继续逛逛</RouterLink>
     </div>
@@ -239,12 +245,22 @@ async function placeOrder() {
         <div class="row"><span>优惠{{ selectedCoupon ? '（' + selectedCoupon.name + '）' : '' }}</span>
           <span>−¥{{ yuan(preview.summary.discount) }}</span>
         </div>
-        <div class="row total"><span>应付</span><strong>¥{{ yuan(preview.summary.payAmount) }}</strong></div>
+        <div class="row total"><span>合计</span><strong>¥{{ yuan(preview.summary.payAmount) }}</strong></div>
+        <template v-if="isPreorder">
+          <div class="row deposit"><span>{{ depositLabel }}定金（本次支付）</span>
+            <span>¥{{ yuan(preview.summary.deposit) }}</span>
+          </div>
+          <div class="row"><span>尾款（发货前支付）</span><span>¥{{ yuan(preview.summary.balance) }}</span></div>
+        </template>
 
         <button class="btn btn--solid submit" :disabled="!addressId || submitting" @click="placeOrder">
-          {{ submitting ? '提交中…' : addressId ? '提交订单' : '请选择收货地址' }}
+          {{ submitting ? '提交中…' : addressId ? (isPreorder ? '提交并支付定金' : '提交订单') : '请选择收货地址' }}
         </button>
-        <p class="hint">提交后会锁定库存并占用优惠券；支付在下一版开放。</p>
+        <p class="hint">
+          {{ isPreorder
+            ? '预售/定制商品提交后锁定库存与优惠券，本次只支付定金；尾款金额 = 合计 − 定金。'
+            : '提交后会锁定库存并占用优惠券；支付在下一版开放。' }}
+        </p>
       </aside>
     </div>
   </div>
@@ -328,6 +344,8 @@ async function placeOrder() {
 .row { display: flex; justify-content: space-between; font-size: 13px; color: var(--muted); padding: 7px 0; }
 .row.total { border-top: 1px solid var(--line); margin-top: 8px; padding-top: 14px; color: var(--ink); align-items: baseline; }
 .row.total strong { font-size: 26px; color: var(--rust); }
+.row.deposit { color: var(--ink); padding-top: 12px; }
+.row.deposit span:last-child { color: var(--rust); font-weight: 600; }
 .submit { width: 100%; justify-content: center; margin-top: 18px; }
 .hint { font-size: 11px; color: var(--muted); margin-top: 10px; line-height: 1.6; }
 .state { padding: 90px 0; text-align: center; color: var(--muted); }

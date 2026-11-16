@@ -44,7 +44,8 @@ public class OrderQueryService {
 
     private static final int MAX_PAGE_SIZE = 100;
     private static final Set<String> ORDER_STATUSES = Set.of(
-            "PENDING_PAYMENT", "PAID", "PARTIALLY_SHIPPED", "SHIPPED", "COMPLETED", "CANCELLED", "REFUNDED");
+            "PENDING_PAYMENT", "PRODUCING", "PAID", "PARTIALLY_SHIPPED", "SHIPPED", "COMPLETED",
+            "CANCELLED", "REFUNDED");
 
     private final OrderMapper orderMapper;
     private final MerchantOrderMapper merchantOrderMapper;
@@ -120,6 +121,7 @@ public class OrderQueryService {
                     sub.getStatus(),
                     sub.getPayAmountCent(),
                     sub.getShippedAt(),
+                    sub.getPromisedShipAt(),
                     shipment == null ? null
                             : new OrderDetailView.ShipmentView(shipment.getCarrier(), shipment.getTrackingNo()),
                     items.stream().map(this::toItemView).toList(),
@@ -133,6 +135,9 @@ public class OrderQueryService {
                 order.getDiscountCent(),
                 order.getShippingFeeCent(),
                 order.getPayAmountCent(),
+                order.getOrderType() == null ? "NORMAL" : order.getOrderType(),
+                order.getDepositCent() == null ? 0 : order.getDepositCent(),
+                order.getBalanceCent() == null ? 0 : order.getBalanceCent(),
                 readAddress(order.getAddressJson()),
                 order.getRemark(),
                 order.getCreatedAt(),
@@ -192,7 +197,10 @@ public class OrderQueryService {
         if (!"PENDING_PAYMENT".equals(order.getStatus()) || order.getCreatedAt() == null) {
             return null;
         }
-        return order.getCreatedAt().plusMinutes(meta.payTimeoutMinutes());
+        boolean preorder = "PREORDER".equals(order.getOrderType()) || "CUSTOM".equals(order.getOrderType());
+        return preorder
+                ? order.getCreatedAt().plusHours(meta.preorderPayTimeoutHours())
+                : order.getCreatedAt().plusMinutes(meta.payTimeoutMinutes());
     }
 
     /**

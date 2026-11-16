@@ -124,9 +124,9 @@ public class OrderService {
         order.setAddressJson(writeJson(preview.address()));
         order.setCouponId(request.couponId());
         order.setRemark(request.remark());
-        order.setOrderType("NORMAL");
-        order.setDepositCent(0);
-        order.setBalanceCent(0);
+        order.setOrderType(preview.summary().orderType());
+        order.setDepositCent(preview.summary().deposit());
+        order.setBalanceCent(preview.summary().balance());
         order.setPenaltyCent(0);
         order.setIsGift(Boolean.TRUE.equals(request.isGift()) ? 1 : 0);
         order.setGiftMessage(request.giftMessage());
@@ -191,7 +191,11 @@ public class OrderService {
             redis.opsForValue().set(idemKey, order.getOrderNo(), IDEM_TTL);
         }
 
-        LocalDateTime expireAt = now.plusMinutes(meta.payTimeoutMinutes());
+        boolean preorder = isPreorder(order);
+        LocalDateTime expireAt = preorder
+                ? now.plusHours(meta.preorderPayTimeoutHours())
+                : now.plusMinutes(meta.payTimeoutMinutes());
+        int dueNow = preorder ? order.getDepositCent() : order.getPayAmountCent();
         List<String> itemLines = preview.subOrders().stream()
                 .flatMap(sub -> sub.items().stream())
                 .map(line -> line.name() + " × " + line.quantity())
@@ -201,11 +205,10 @@ public class OrderService {
                 Map.of(
                         "orderNo", order.getOrderNo(),
                         "items", itemLines,
-                        "payAmount", BigDecimal.valueOf(order.getPayAmountCent(), 2).toPlainString(),
+                        "payAmount", BigDecimal.valueOf(dueNow, 2).toPlainString(),
                         "payUrl", "/orders/" + order.getOrderNo(),
                         "payDeadline", expireAt.format(MAIL_TIME)));
-        return new OrderCreatedResult(order.getOrderNo(), order.getStatus(), order.getPayAmountCent(),
-                expireAt, created);
+        return new OrderCreatedResult(order.getOrderNo(), order.getStatus(), dueNow, expireAt, created);
     }
 
     private OrderCreatedResult replay(Long userId, String orderNo) {
@@ -221,8 +224,16 @@ public class OrderService {
                 .map(mo -> new OrderCreatedResult.SubOrder(mo.getSubOrderNo(), mo.getMerchantId(), null,
                         mo.getPayAmountCent()))
                 .toList();
-        return new OrderCreatedResult(order.getOrderNo(), order.getStatus(), order.getPayAmountCent(),
-                order.getCreatedAt().plusMinutes(meta.payTimeoutMinutes()), created);
+        boolean preorder = isPreorder(order);
+        LocalDateTime expireAt = preorder
+                ? order.getCreatedAt().plusHours(meta.preorderPayTimeoutHours())
+                : order.getCreatedAt().plusMinutes(meta.payTimeoutMinutes());
+        int dueNow = preorder ? order.getDepositCent() : order.getPayAmountCent();
+        return new OrderCreatedResult(order.getOrderNo(), order.getStatus(), dueNow, expireAt, created);
+    }
+
+    private boolean isPreorder(Order order) {
+        return "PREORDER".equals(order.getOrderType()) || "CUSTOM".equals(order.getOrderType());
     }
 
     private String nextOrderNo() {

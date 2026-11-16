@@ -11,6 +11,8 @@ public record MetaProperties(
         int shippingFeeCent,
         int payTimeoutMinutes,
         int autoConfirmDays,
-        int settlementProtectionDays
+        int settlementProtectionDays,
+        /** 预售/定制订单支付定金的时限（小时）；普通订单用 payTimeoutMinutes */
+        int preorderPayTimeoutHours
 ) {
 }

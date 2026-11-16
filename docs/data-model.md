@@ -77,10 +77,10 @@ erDiagram
 | 表 | 关键字段 | 约束/索引 |
 |---|---|---|
 | `cart_items` | id, user_id, sku_id, quantity | `uk_cart_user_sku` |
-| `orders` | id, order_no, user_id, status, merchant_count, goods_amount_cent, discount_cent, shipping_fee_cent, pay_amount_cent, address_json, coupon_id, remark, paid_at, completed_at, cancelled_at, cancel_reason, version | `uk_orders_no`、`idx_orders_user_status`、`idx_orders_status_created` |
-| `merchant_orders` | id, sub_order_no, order_id, merchant_id, status, goods_amount_cent, discount_cent, shipping_fee_cent, pay_amount_cent, refunded_amount_cent, shipped_at, completed_at, settled | `uk_mo_no`、`idx_mo_merchant_status`、`idx_mo_order` |
+| `orders` | id, order_no, user_id, status, merchant_count, goods_amount_cent, discount_cent, shipping_fee_cent, pay_amount_cent, address_json, coupon_id, remark, order_type(NORMAL/PREORDER/CUSTOM), deposit_cent, balance_cent, promised_ship_at, paid_at, completed_at, cancelled_at, cancel_reason, version | `uk_orders_no`、`idx_orders_user_status`、`idx_orders_status_created` |
+| `merchant_orders` | id, sub_order_no, order_id, merchant_id, status, goods_amount_cent, discount_cent, shipping_fee_cent, pay_amount_cent, refunded_amount_cent, promised_ship_at, shipped_at, completed_at, settled | `uk_mo_no`、`idx_mo_merchant_status`、`idx_mo_order` |
 | `order_items` | id, merchant_order_id, order_id, merchant_id, sku_id, product_id, product_name, shop_name, sku_spec, unit_price_cent, quantity, subtotal_cent | `idx_oi_mo`、`idx_oi_product` |
-| `payments` | id, payment_no, order_id, channel(MOCK), amount_cent, status, out_trade_no, paid_at, callback_at, callback_raw | `uk_payments_out_trade_no`、`uk_payments_no` |
+| `payments` | id, payment_no, order_id, channel(MOCK), amount_cent, status, purpose(FULL/DEPOSIT/BALANCE), out_trade_no, paid_at, callback_at, callback_raw | `uk_payments_out_trade_no`、`uk_payments_no` |
 | `refunds` | id, refund_no, merchant_order_id, order_id, merchant_id, amount_cent, reason, status, reject_reason, operator_type(MERCHANT/SUPPORT), operator_id, finished_at | `uk_refunds_no`、`idx_refunds_merchant` |
 | `shipments` | id, merchant_order_id, carrier, tracking_no, operator_id, shipped_at | `uk_shipments_mo` |
 | `order_status_logs` | id, scope(ORDER/MERCHANT_ORDER), order_id, merchant_order_id, from_status, to_status, operator_type(USER/MERCHANT/ADMIN/SYSTEM), operator_id, reason | `idx_osl_order`、`idx_osl_mo` |
@@ -112,6 +112,7 @@ erDiagram
 5. 优惠券折扣按各子单商品金额比例分摊，尾差给金额最大的子单
 6. 一个子单同时最多一条进行中的退款；重复申请返回 409
 7. `settlement_items` 中同一子单只能出现一次（唯一索引兜底），防止重复结算
+8. 预售/定制订单：`orders.deposit_cent + orders.balance_cent = orders.pay_amount_cent`；子单 `promised_ship_at` 不早于定金支付时间
 8. 商家被 `SUSPENDED` 后：商品全部下架、未发货子单仍可发货（避免伤到已付款顾客）、不能上新
 
 ## 索引与容量

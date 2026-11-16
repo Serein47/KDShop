@@ -95,6 +95,13 @@ public class CheckoutService {
             rows.add(new Row(sku, product, shop, item.quantity()));
         }
 
+        // 定金/尾款只按整单算，所以现货与预售/定制不能混在一张单里（ISSUE-34 定稿）
+        boolean hasStock = rows.stream().anyMatch(row -> "IN_STOCK".equals(saleMode(row.product())));
+        boolean hasPreorder = rows.stream().anyMatch(row -> !"IN_STOCK".equals(saleMode(row.product())));
+        if (hasStock && hasPreorder) {
+            throw new BusinessException(ErrorCode.PARAM_INVALID, "预售/定制商品请与现货分开下单");
+        }
+
         Map<Long, List<Row>> byMerchant = rows.stream()
                 .collect(Collectors.groupingBy(row -> row.product().getMerchantId(), LinkedHashMap::new, Collectors.toList()));
 
@@ -133,11 +140,39 @@ public class CheckoutService {
             payTotal += pay;
         }
 
+        String orderType = "NORMAL";
+        int deposit = 0;
+        int balance = 0;
+        if (hasPreorder) {
+            orderType = rows.stream().anyMatch(row -> "PREORDER".equals(saleMode(row.product())))
+                    ? "PREORDER" : "CUSTOM";
+            deposit = deposit(rows, payTotal);
+            balance = payTotal - deposit;
+        }
+
         CheckoutPreview.Summary summary = new CheckoutPreview.Summary(
-                goodsTotal, totalDiscount, shippingTotal, payTotal);
+                goodsTotal, totalDiscount, shippingTotal, payTotal, orderType, deposit, balance);
 
         return new CheckoutPreview(subOrders, summary, coupons(userId, goodsTotal, request.couponId()),
                 address(userId, request.addressId()));
+    }
+
+    private String saleMode(Product product) {
+        return product.getSaleMode() == null ? "IN_STOCK" : product.getSaleMode();
+    }
+
+    /**
+     * 定金 = Σ round(行金额 × 该商品定金比例)，整单最低 1 元，且不超过应付总额。
+     * 尾款 = 应付 - 定金，两者之和恒等于订单应付。
+     */
+    private int deposit(List<Row> rows, int payTotal) {
+        int raw = 0;
+        for (Row row : rows) {
+            int line = row.sku().getPriceCent() * row.quantity();
+            int rate = row.product().getDepositRate() == null ? 0 : row.product().getDepositRate();
+            raw += (int) Math.round(line * rate / 10000.0);
+        }
+        return Math.min(Math.max(raw, 100), payTotal);
     }
 
     private List<CheckoutRequest.Item> resolveItems(Long userId, CheckoutRequest request) {

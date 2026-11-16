@@ -16,10 +16,22 @@ const carriers = ['顺丰速运', '中通快递', '圆通速递', '韵达快递'
 
 const tabs = [
   { value: '', label: '全部' },
+  { value: 'PRODUCING', label: '制作中' },
   { value: 'PENDING_SHIPMENT', label: '待发货' },
   { value: 'SHIPPED', label: '已发货' },
   { value: 'COMPLETED', label: '已完成' },
 ]
+
+function statusLabel(value: string) {
+  const labels: Record<string, string> = {
+    PENDING_PAYMENT: '待付款',
+    PRODUCING: '制作中',
+    PENDING_SHIPMENT: '待发货',
+    SHIPPED: '已发货',
+    COMPLETED: '已完成',
+  }
+  return labels[value] ?? value
+}
 
 async function load() {
   loading.value = true
@@ -79,7 +91,7 @@ async function submitShip() {
             <h2>{{ sub.subOrderNo }}</h2>
             <p class="muted">订单 {{ sub.orderNo }} · {{ sub.createdAt?.slice(0, 16).replace('T', ' ') }}</p>
           </div>
-          <span class="tag">{{ sub.status === 'PENDING_SHIPMENT' ? '待发货' : sub.status === 'SHIPPED' ? '已发货' : '已完成' }}</span>
+          <span class="tag">{{ statusLabel(sub.status) }}</span>
         </header>
 
         <div class="items">

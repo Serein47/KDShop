@@ -56,7 +56,7 @@ class OrderServiceTest {
     @Mock private MailOutboxWriter mailOutboxWriter;
 
     private OrderService service;
-    private final MetaProperties meta = new MetaProperties("CNY", "Asia/Shanghai", 9900, 1000, 15, 15, 7);
+    private final MetaProperties meta = new MetaProperties("CNY", "Asia/Shanghai", 9900, 1000, 15, 15, 7, 24);
 
     @BeforeEach
     void setUp() {
@@ -115,12 +115,43 @@ class OrderServiceTest {
         verify(skuMapper, never()).lockStock(any(), any(Integer.class).intValue());
     }
 
+    @Test
+    void preorderOrderStoresDepositAndBalance() {
+        when(redis.opsForValue()).thenReturn(valueOps);
+        when(checkoutService.preview(any(CheckoutRequest.class))).thenReturn(preorderPreview());
+        when(skuMapper.lockStock(any(), any(Integer.class).intValue())).thenReturn(1);
+        when(valueOps.increment(anyString())).thenReturn(1L);
+
+        OrderCreatedResult result = service.create(
+                new CreateOrderRequest(null, null, null, null, null, null, null), null);
+
+        assertThat(result.payAmount()).isEqualTo(7680);
+        org.mockito.ArgumentCaptor<Order> captor = org.mockito.ArgumentCaptor.forClass(Order.class);
+        verify(orderMapper).insert(captor.capture());
+        Order saved = captor.getValue();
+        assertThat(saved.getOrderType()).isEqualTo("CUSTOM");
+        assertThat(saved.getDepositCent()).isEqualTo(7680);
+        assertThat(saved.getBalanceCent()).isEqualTo(17920);
+        assertThat(saved.getPayAmountCent()).isEqualTo(25600);
+    }
+
+    private CheckoutPreview preorderPreview() {
+        CheckoutPreview.Line line = new CheckoutPreview.Line(1L, 1L, "刻字胡桃木盒", "products/1/1.jpg",
+                Map.of("尺寸", "中"), 12800, 2, 25600);
+        CheckoutPreview.SubOrder sub = new CheckoutPreview.SubOrder(1L, "山野杂货", List.of(line),
+                25600, 0, 0, 25600);
+        return new CheckoutPreview(List.of(sub),
+                new CheckoutPreview.Summary(25600, 0, 0, 25600, "CUSTOM", 7680, 17920),
+                new CheckoutPreview.Coupons(List.of(), List.of()),
+                new CheckoutPreview.AddressView("张三", "13800008000", "浙江省", "杭州市", "西湖区", "文三路 1 号"));
+    }
+
     private CheckoutPreview preview() {
         CheckoutPreview.Line line = new CheckoutPreview.Line(1L, 1L, "粗陶马克杯", "products/1/1.jpg", Map.of("颜色", "米白"),
                 12800, 2, 25600);
         CheckoutPreview.SubOrder sub = new CheckoutPreview.SubOrder(1L, "山野杂货", List.of(line),
                 25600, 0, 0, 25600);
-        return new CheckoutPreview(List.of(sub), new CheckoutPreview.Summary(25600, 0, 0, 25600),
+        return new CheckoutPreview(List.of(sub), new CheckoutPreview.Summary(25600, 0, 0, 25600, "NORMAL", 0, 0),
                 new CheckoutPreview.Coupons(List.of(), List.of()),
                 new CheckoutPreview.AddressView("张三", "13800008000", "浙江省", "杭州市", "西湖区", "文三路 1 号"));
     }

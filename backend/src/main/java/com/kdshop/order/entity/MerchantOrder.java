@@ -22,6 +22,7 @@ public class MerchantOrder {
     private Integer shippingFeeCent;
     private Integer payAmountCent;
     private Integer refundedAmountCent;
+    private LocalDateTime promisedShipAt;
     private LocalDateTime shippedAt;
     private LocalDateTime completedAt;
     private String carrier;

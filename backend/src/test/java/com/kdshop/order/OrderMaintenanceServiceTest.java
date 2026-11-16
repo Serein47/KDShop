@@ -47,7 +47,7 @@ class OrderMaintenanceServiceTest {
     @Mock private UserMapper userMapper;
 
     private OrderMaintenanceService service;
-    private final MetaProperties meta = new MetaProperties("CNY", "Asia/Shanghai", 9900, 1000, 15, 7, 7);
+    private final MetaProperties meta = new MetaProperties("CNY", "Asia/Shanghai", 9900, 1000, 15, 7, 7, 24);
 
     @BeforeEach
     void setUp() {
@@ -92,6 +92,34 @@ class OrderMaintenanceServiceTest {
 
         assertThat(service.cancelExpiredOrders()).isZero();
         verify(skuMapper, org.mockito.Mockito.never()).unlockStock(any(), any(Integer.class).intValue());
+    }
+
+    @Test
+    void preorderIsNotCancelledBeforeDepositDeadline() {
+        Order order = new Order();
+        order.setId(7L);
+        order.setStatus("PENDING_PAYMENT");
+        order.setOrderType("PREORDER");
+        order.setCreatedAt(LocalDateTime.now().minusHours(2));
+        when(orderMapper.selectList(any())).thenReturn(List.of(order));
+
+        assertThat(service.cancelExpiredOrders()).isZero();
+        verify(orderMapper, org.mockito.Mockito.never()).update(any(), any());
+    }
+
+    @Test
+    void preorderIsCancelledAfterDepositDeadline() {
+        Order order = new Order();
+        order.setId(8L);
+        order.setOrderNo("KD202611150001");
+        order.setStatus("PENDING_PAYMENT");
+        order.setOrderType("CUSTOM");
+        order.setCreatedAt(LocalDateTime.now().minusHours(25));
+        when(orderMapper.selectList(any())).thenReturn(List.of(order));
+        when(orderMapper.update(any(), any())).thenReturn(1);
+
+        assertThat(service.cancelExpiredOrders()).isEqualTo(1);
+        verify(emailOutboxMapper).insert(any(EmailOutbox.class));
     }
 
     @Test

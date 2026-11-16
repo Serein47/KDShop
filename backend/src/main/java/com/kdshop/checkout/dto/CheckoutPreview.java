@@ -32,7 +32,13 @@ public record CheckoutPreview(
     ) {
     }
 
-    public record Summary(int goodsAmount, int discount, int shippingFee, int payAmount) {
+    /**
+     * @param orderType NORMAL / PREORDER / CUSTOM；预售与定制整单只付定金
+     * @param deposit   本次应付定金（分）；普通订单为 0
+     * @param balance   尾款（分）；普通订单为 0
+     */
+    public record Summary(int goodsAmount, int discount, int shippingFee, int payAmount,
+                          String orderType, int deposit, int balance) {
     }
 
     public record Coupons(List<CouponView> usable, List<Unusable> unusable) {

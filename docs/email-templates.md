@@ -51,12 +51,12 @@
 
 | 项 | 内容 |
 |---|---|
-| 触发 | 支付回调验签通过、订单转「已付款」 |
+| 触发 | 支付回调验签通过、订单转「已付款」或「制作中」（定金/尾款） |
 | 收件人 | 下单账号邮箱 |
 | 业务键 | `payment_success:{paymentNo}` |
 | 主题 | 支付成功，订单 {orderNo} 正在备货 |
-| 变量 | `orderNo`、`paidAmount`、`paidAt`、`orderUrl` |
-| 正文要点 | 实付金额、支付时间、预计发货说明 |
+| 变量 | `orderNo`、`paidAmount`、`paymentLabel`（空 / （定金） / （尾款））、`paidAt`、`orderUrl` |
+| 正文要点 | 本次支付金额与性质、支付时间、订单进度说明 |
 
 ### 4. `ORDER_SHIPPED` 发货通知
 

@@ -94,5 +94,6 @@ kdshop:
     shipping-free-threshold-cent: 9900
     shipping-fee-cent: 1000
     pay-timeout-minutes: 15
+    preorder-pay-timeout-hours: 24
     auto-confirm-days: 15
     settlement-protection-days: 7

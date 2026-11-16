@@ -188,6 +188,8 @@ public class OrderActionService {
                 .anyMatch(sub -> "SHIPPED".equals(sub.getStatus()) || "COMPLETED".equals(sub.getStatus()));
         boolean allPendingShipment = subOrders.stream()
                 .allMatch(sub -> "PENDING_SHIPMENT".equals(sub.getStatus()));
+        boolean allProducing = subOrders.stream()
+                .allMatch(sub -> "PRODUCING".equals(sub.getStatus()));
         boolean allPendingPayment = subOrders.stream()
                 .allMatch(sub -> "PENDING_PAYMENT".equals(sub.getStatus()));
 
@@ -208,6 +210,9 @@ public class OrderActionService {
         }
         if (allPendingShipment) {
             return "PAID";
+        }
+        if (allProducing) {
+            return "PRODUCING";
         }
         if (allPendingPayment) {
             return "PENDING_PAYMENT";
