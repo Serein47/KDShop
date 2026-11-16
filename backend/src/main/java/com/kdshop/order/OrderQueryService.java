@@ -175,7 +175,8 @@ public class OrderQueryService {
 
     private OrderDetailView.ItemView toItemView(OrderItem item) {
         return new OrderDetailView.ItemView(item.getId(), item.getProductName(), item.getProductImage(), readMap(item.getSkuSpec()),
-                item.getUnitPriceCent(), item.getQuantity(), item.getSubtotalCent());
+                item.getUnitPriceCent(), item.getQuantity(), item.getSubtotalCent(),
+                item.getFlawAck() != null && item.getFlawAck() == 1);
     }
 
     private String summary(List<OrderItem> items) {

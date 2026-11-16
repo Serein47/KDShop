@@ -25,5 +25,6 @@ public class OrderItem {
     private Integer unitPriceCent;
     private Integer quantity;
     private Integer subtotalCent;
+    private Integer flawAck;
     private LocalDateTime createdAt;
 }

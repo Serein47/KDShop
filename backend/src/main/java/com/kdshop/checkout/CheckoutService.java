@@ -130,7 +130,9 @@ public class CheckoutService {
                             row.sku().getId(), row.product().getId(), row.product().getName(),
                             row.product().getMainImage(),
                             readMap(row.sku().getSpecJson()), row.sku().getPriceCent(),
-                            row.quantity(), row.sku().getPriceCent() * row.quantity()))
+                            row.quantity(), row.sku().getPriceCent() * row.quantity(),
+                            row.product().getRequiresFlawAck() != null && row.product().getRequiresFlawAck() == 1,
+                            row.product().getFlawNote()))
                     .toList();
 
             Shop shop = groupRows.get(0).shop();
