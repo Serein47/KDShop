@@ -93,8 +93,10 @@ public class SettlementService {
                             .eq(MerchantOrder::getMerchantId, shop.getId())
                             .eq(MerchantOrder::getStatus, "COMPLETED")
                             .eq(MerchantOrder::getSettled, 0)
-                            .ge(MerchantOrder::getCompletedAt, from)
-                            .lt(MerchantOrder::getCompletedAt, to))
+                            // 用 updated_at 纳入周期：售后冻结跨期后解冻的子单能在解冻当期被结算；
+                            // 正常完成的子单 updated_at ≈ completed_at，不受影响
+                            .ge(MerchantOrder::getUpdatedAt, from)
+                            .lt(MerchantOrder::getUpdatedAt, to))
                     // 售后中的子单冻结结算，等关闭（解冻）或退款（直接冲抵）后再进入下一期
                     .stream()
                     .filter(sub -> sub.getAfterSalesFrozen() == null || sub.getAfterSalesFrozen() == 0)
