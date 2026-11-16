@@ -32,6 +32,7 @@ onMounted(async () => {
         <RouterLink to="/admin/merchants">商家审核</RouterLink>
         <RouterLink to="/admin/orders">订单</RouterLink>
         <RouterLink to="/admin/refunds">退款</RouterLink>
+        <RouterLink to="/admin/after-sales">售后裁决</RouterLink>
         <RouterLink to="/admin/categories">类目</RouterLink>
         <RouterLink to="/admin/products">商品</RouterLink>
         <RouterLink to="/admin/settlements">结算</RouterLink>

@@ -10,6 +10,7 @@ import com.kdshop.aftersales.dto.ApplyAfterSaleRequest;
 import com.kdshop.aftersales.dto.InspectRequest;
 import com.kdshop.aftersales.dto.ReviewAfterSaleRequest;
 import com.kdshop.aftersales.dto.ReturnShipmentRequest;
+import com.kdshop.aftersales.dto.VerdictRequest;
 import com.kdshop.aftersales.entity.AfterSale;
 import com.kdshop.aftersales.entity.AfterSaleLog;
 import com.kdshop.aftersales.mapper.AfterSaleLogMapper;
@@ -148,6 +149,7 @@ public class AfterSalesService {
         afterSale.setDescription(request.description());
         afterSale.setEvidenceJson(writeJson(request.evidence()));
         afterSale.setStatus("APPLIED");
+        afterSale.setReviewDueAt(LocalDateTime.now().plusHours(meta.afterSalesReviewHours()));
         afterSale.setRefundAmountCent(amount);
         afterSale.setReapplyCount(0);
         afterSaleMapper.insert(afterSale);
@@ -278,6 +280,7 @@ public class AfterSalesService {
         afterSale.setDescription(request.description());
         afterSale.setEvidenceJson(writeJson(request.evidence()));
         afterSale.setStatus("APPLIED");
+        afterSale.setReviewDueAt(LocalDateTime.now().plusHours(meta.afterSalesReviewHours()));
         afterSale.setRejectReason(null);
         afterSale.setReapplyCount((afterSale.getReapplyCount() == null ? 0 : afterSale.getReapplyCount()) + 1);
         afterSaleMapper.updateById(afterSale);
@@ -369,7 +372,7 @@ public class AfterSalesService {
      */
     private boolean finishInspection(AfterSale afterSale, String result, String note, List<String> images,
                                      String operatorType, Long operatorId) {
-        int updated = afterSaleMapper.update(null, new UpdateWrapper<AfterSale>()
+        UpdateWrapper<AfterSale> update = new UpdateWrapper<AfterSale>()
                 .eq("id", afterSale.getId())
                 .eq("status", "RECEIVED")
                 .set("status", "INSPECTED")
@@ -377,7 +380,12 @@ public class AfterSalesService {
                 .set("inspect_note", note)
                 .set("inspect_images_json", writeJson(images))
                 .set("operator_type", operatorType)
-                .set("operator_id", operatorId));
+                .set("operator_id", operatorId);
+        if ("DEFECTIVE".equals(result)) {
+            update.set("responsibility", "MERCHANT");
+            afterSale.setResponsibility("MERCHANT");
+        }
+        int updated = afterSaleMapper.update(null, update);
         if (updated == 0) {
             return false;
         }
@@ -449,7 +457,134 @@ public class AfterSalesService {
         return true;
     }
 
-    // ---- 平台裁决（ISSUE-39）在此扩展 ----
+    // ---- 平台裁决与自动裁决（ISSUE-39） ----
+
+    /**
+     * 商家 48 小时未审核：仅退款自动通过并退款；退货退款升级平台客服。
+     * 条件更新保证与人工审核只生效一次，流水与审计都记 SYSTEM。
+     */
+    @Transactional
+    public boolean autoReview(Long afterSaleId) {
+        AfterSale afterSale = afterSaleMapper.selectById(afterSaleId);
+        if (afterSale == null || !"APPLIED".equals(afterSale.getStatus())) {
+            return false;
+        }
+        if (afterSale.getReviewDueAt() == null || LocalDateTime.now().isBefore(afterSale.getReviewDueAt())) {
+            return false;
+        }
+        boolean refundOnly = "REFUND_ONLY".equals(afterSale.getType());
+        int updated = afterSaleMapper.update(null, new UpdateWrapper<AfterSale>()
+                .eq("id", afterSaleId)
+                .eq("status", "APPLIED")
+                .set("status", refundOnly ? "APPROVED" : "ESCALATED")
+                .set("operator_type", "SYSTEM"));
+        if (updated == 0) {
+            return false;
+        }
+
+        if (refundOnly) {
+            afterSale.setStatus("APPROVED");
+            writeLog(afterSaleId, "APPLIED", "APPROVED", "SYSTEM", null, "商家超时未审核，系统自动同意");
+            MerchantOrder sub = merchantOrderMapper.selectById(afterSale.getMerchantOrderId());
+            Refund refund = refundService.executeForAfterSales(sub, afterSale.getRefundAmountCent(),
+                    "售后 " + afterSale.getAsNo(), "SYSTEM", null);
+            afterSale.setStatus("REFUNDED");
+            afterSale.setRefundNo(refund.getRefundNo());
+            afterSale.setCompletedAt(LocalDateTime.now());
+            afterSaleMapper.updateById(afterSale);
+            writeLog(afterSaleId, "APPROVED", "REFUNDED", "SYSTEM", null,
+                    "自动退款完成：" + refund.getRefundNo());
+            audit("SYSTEM", null, "AFTER_SALES_AUTO_APPROVE", afterSale.getAsNo(),
+                    Map.of("refundNo", refund.getRefundNo()));
+        } else {
+            afterSale.setStatus("ESCALATED");
+            writeLog(afterSaleId, "APPLIED", "ESCALATED", "SYSTEM", null,
+                    "商家超时未审核，升级平台客服");
+            audit("SYSTEM", null, "AFTER_SALES_AUTO_ESCALATE", afterSale.getAsNo(),
+                    Map.of("type", afterSale.getType()));
+        }
+        return true;
+    }
+
+    /** 平台强制裁决：同意/驳回 + 责任归属 + 必填原因。 */
+    @Transactional
+    public AfterSaleView verdict(String asNo, VerdictRequest request) {
+        requireAdmin();
+        Long adminId = currentUserId();
+        AfterSale afterSale = require(asNo);
+        String from = afterSale.getStatus();
+        if (!"APPLIED".equals(from) && !"ESCALATED".equals(from)) {
+            throw new BusinessException(ErrorCode.AFTER_SALES_STATE_INVALID, "该售后单当前不能裁决");
+        }
+        String responsibility = normalizeResponsibility(request.responsibility());
+        String decision = request.decision().trim().toUpperCase();
+        if (!"APPROVE".equals(decision) && !"REJECT".equals(decision)) {
+            throw new BusinessException(ErrorCode.PARAM_INVALID, "裁决结果只能是 APPROVE 或 REJECT");
+        }
+        boolean approve = "APPROVE".equals(decision);
+        if (!StringUtils.hasText(request.note())) {
+            throw new BusinessException(ErrorCode.PARAM_INVALID, "平台裁决必须填写原因");
+        }
+        String note = request.note().trim();
+
+        afterSale.setResponsibility(responsibility);
+        afterSale.setVerdictNote(note);
+        afterSale.setOperatorType("ADMIN");
+        afterSale.setOperatorId(adminId);
+
+        int updated = afterSaleMapper.update(null, new UpdateWrapper<AfterSale>()
+                .eq("id", afterSale.getId())
+                .eq("status", from)
+                .set("status", approve ? "APPROVED" : "REJECTED")
+                .set("responsibility", responsibility)
+                .set("verdict_note", note)
+                .set("operator_type", "ADMIN")
+                .set("operator_id", adminId));
+        if (updated == 0) {
+            throw new BusinessException(ErrorCode.AFTER_SALES_STATE_INVALID, "售后单状态已变化，请刷新后重试");
+        }
+
+        if (!approve) {
+            afterSale.setStatus("REJECTED");
+            afterSale.setRejectReason(note);
+            afterSaleMapper.updateById(afterSale);
+            writeLog(afterSale.getId(), from, "REJECTED", "ADMIN", adminId, "平台裁决驳回：" + note);
+            audit("ADMIN", adminId, "AFTER_SALES_VERDICT", asNo,
+                    Map.of("decision", "REJECT", "responsibility", responsibility));
+            return view(afterSale, true);
+        }
+
+        afterSale.setStatus("APPROVED");
+        writeLog(afterSale.getId(), from, "APPROVED", "ADMIN", adminId, "平台裁决同意：" + note);
+        if ("REFUND_ONLY".equals(afterSale.getType())) {
+            MerchantOrder sub = merchantOrderMapper.selectById(afterSale.getMerchantOrderId());
+            Refund refund = refundService.executeForAfterSales(sub, afterSale.getRefundAmountCent(),
+                    "售后 " + asNo, "ADMIN", adminId);
+            afterSale.setStatus("REFUNDED");
+            afterSale.setRefundNo(refund.getRefundNo());
+            afterSale.setCompletedAt(LocalDateTime.now());
+            afterSaleMapper.updateById(afterSale);
+            writeLog(afterSale.getId(), "APPROVED", "REFUNDED", "SYSTEM", null,
+                    "平台裁决退款完成：" + refund.getRefundNo());
+        } else {
+            afterSale.setStatus("RETURNING");
+            afterSale.setReturnDueAt(LocalDateTime.now().plusDays(meta.afterSalesReturnDays()));
+            afterSaleMapper.updateById(afterSale);
+            writeLog(afterSale.getId(), "APPROVED", "RETURNING", "SYSTEM", null, "平台裁决同意退货，等待寄回");
+        }
+        audit("ADMIN", adminId, "AFTER_SALES_VERDICT", asNo,
+                Map.of("decision", "APPROVE", "responsibility", responsibility));
+        return view(afterSale, true);
+    }
+
+    private String normalizeResponsibility(String value) {
+        String normalized = StringUtils.hasText(value) ? value.trim().toUpperCase() : "";
+        if (!Set.of("MERCHANT", "LOGISTICS", "CUSTOMER").contains(normalized)) {
+            throw new BusinessException(ErrorCode.PARAM_INVALID,
+                    "责任归属只能是商家、物流或顾客");
+        }
+        return normalized;
+    }
 
     private void checkNoOpenAfterSale(Long merchantOrderId) {
         List<AfterSale> existing = afterSaleMapper.selectList(new LambdaQueryWrapper<AfterSale>()
@@ -575,6 +710,7 @@ public class AfterSalesService {
                 afterSale.getDescription(),
                 readList(afterSale.getEvidenceJson()),
                 afterSale.getStatus(),
+                afterSale.getReviewDueAt(),
                 afterSale.getRefundAmountCent() == null ? 0 : afterSale.getRefundAmountCent(),
                 afterSale.getRefundNo(),
                 afterSale.getReturnCarrier(),

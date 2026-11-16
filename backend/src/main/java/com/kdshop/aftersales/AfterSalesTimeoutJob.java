@@ -32,11 +32,30 @@ public class AfterSalesTimeoutJob {
 
     @Scheduled(fixedDelayString = "${kdshop.jobs.scan-interval-ms:60000}", initialDelay = 50000)
     public void scan() {
+        int autoReviewed = autoReviewOverdue();
         int closed = closeOverdueReturns();
         int inspected = autoInspectOverdue();
-        if (closed > 0 || inspected > 0) {
-            log.info("after-sales timeout job: closed={}, autoInspected={}", closed, inspected);
+        if (autoReviewed > 0 || closed > 0 || inspected > 0) {
+            log.info("after-sales timeout job: autoReviewed={}, closed={}, autoInspected={}",
+                    autoReviewed, closed, inspected);
         }
+    }
+
+    /** 商家 48 小时未审核：仅退款自动通过，退货退款升级平台（ISSUE-39）。 */
+    public int autoReviewOverdue() {
+        LocalDateTime now = LocalDateTime.now();
+        List<AfterSale> rows = afterSaleMapper.selectList(new LambdaQueryWrapper<AfterSale>()
+                .eq(AfterSale::getStatus, "APPLIED")
+                .isNotNull(AfterSale::getReviewDueAt)
+                .lt(AfterSale::getReviewDueAt, now)
+                .last("LIMIT 50"));
+        int count = 0;
+        for (AfterSale row : rows) {
+            if (afterSalesService.autoReview(row.getId())) {
+                count++;
+            }
+        }
+        return count;
     }
 
     public int closeOverdueReturns() {

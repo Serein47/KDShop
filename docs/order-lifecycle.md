@@ -167,6 +167,9 @@ stateDiagram-v2
 - 退货退款：商家同意后 `return_due_at = now + 7 天`；顾客填寄回物流 → 商家确认收货（`inspect_due_at = now + 48 小时`）→ 质检
 - 质检 `GOOD` 回补库存并退款；`DEFECTIVE` 不回补库存但仍退款；质检超时按 `GOOD` 自动退款
 - 7 天未填寄回物流 → `CLOSED`；关闭后不再退款
+- 商家 48 小时未审核：仅退款自动通过并退款，退货退款升级 `ESCALATED` 交平台客服
+- 平台裁决必须填原因与责任归属（`MERCHANT` / `LOGISTICS` / `CUSTOMER`），责任归属决定退货运费由谁承担；自动裁决的流水与审计记 `SYSTEM`
+- 质检为残次时默认责任归属商家，计入商家责任率
 
 ## 结算
 
@@ -234,6 +237,7 @@ stateDiagram-v2
 | 尾款逾期关闭 | 每 60 秒 | 扫 `PRODUCING` 且 `balance_due_at < now`，关闭订单（定金不退、库存不回补、券不退还） |
 | 自动确认收货 | 每小时 | 扫 `SHIPPED` 且 `shipped_at < now - 15d` 的子单，转完成并重算主单 |
 | 工期赔付 | 每 60 秒 | 扫 `PRODUCING` / `PENDING_SHIPMENT` 且 `promised_ship_at < now` 的未发货子单，按天补 `penalties`（5%/天，上限 50% 定金） |
+| 售后超时 | 每 60 秒 | 商家 48 小时未审核：仅退款自动通过、退货退款升级平台；7 天未填寄回物流关闭；收货 48 小时未质检按良品自动退款 |
 | 结算生成 | 每日 | 汇总可结算子单，按商家生成结算单（扣佣金、退款与赔付） |
 | 结算对账 | 每日 | 校验 `Σ settlement_items` 与已完成子单一致，差异告警 |
 

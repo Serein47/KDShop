@@ -15,6 +15,7 @@ public record AfterSaleView(
         String description,
         List<String> evidence,
         String status,
+        LocalDateTime reviewDueAt,
         int refundAmount,
         String refundNo,
         String returnCarrier,

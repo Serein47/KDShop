@@ -20,6 +20,7 @@ const router = createRouter({
     { path: '/admin/users', name: 'admin-users', component: () => import('@/views/admin/UsersView.vue') },
     { path: '/admin/orders', name: 'admin-orders', component: () => import('@/views/admin/OrdersView.vue') },
     { path: '/admin/refunds', name: 'admin-refunds', component: () => import('@/views/admin/RefundsView.vue') },
+    { path: '/admin/after-sales', name: 'admin-after-sales', component: () => import('@/views/admin/AfterSalesView.vue') },
     { path: '/admin/categories', name: 'admin-categories', component: () => import('@/views/admin/CategoriesView.vue') },
     { path: '/admin/products', name: 'admin-products', component: () => import('@/views/admin/ProductsView.vue') },
     { path: '/admin/settlements', name: 'admin-settlements', component: () => import('@/views/admin/SettlementsView.vue') },
