@@ -42,8 +42,13 @@ const reviewRating = ref(5)
 const reviewContent = ref('')
 
 const orderNo = computed(() => String(route.params.orderNo ?? ''))
+const isPreorder = computed(() => !!order.value && order.value.orderType !== 'NORMAL')
 const canPay = computed(() => !!order.value && isPayable(order.value.status))
 const canCancel = computed(() => !!order.value && isCancellable(order.value.status))
+const payLabel = computed(() => {
+  if (!order.value) return '去支付'
+  return isPreorder.value ? '支付定金' : '去支付'
+})
 
 onMounted(async () => {
   if (!auth.ready) await auth.fetchMe()
@@ -224,7 +229,7 @@ function actorLabel(actor: string): string {
           <span class="pill" :class="`pill--${orderStatusTone(order.status)}`">
             {{ orderStatusLabel(order.status) }}
           </span>
-          <button v-if="canPay" class="btn btn--solid" :disabled="busy" @click="pay">去支付</button>
+          <button v-if="canPay" class="btn btn--solid" :disabled="busy" @click="pay">{{ payLabel }}</button>
           <button v-if="canCancel" class="btn btn--ghost" :disabled="busy" @click="cancel">
             取消订单
           </button>
@@ -282,7 +287,12 @@ function actorLabel(actor: string): string {
                 <span v-if="sub.shippedAt"> · {{ formatDateTime(sub.shippedAt) }}</span>
               </p>
               <p v-else-if="sub.status === 'PENDING_PAYMENT'" class="ship muted">支付后商家安排发货</p>
-              <p v-else-if="sub.status === 'PENDING_SHIPMENT'" class="ship muted">等待商家发货</p>
+              <p v-else-if="sub.status === 'PRODUCING'" class="ship muted">
+                制作中<template v-if="sub.promisedShipAt"> · 预计 {{ formatDateTime(sub.promisedShipAt) }} 发货</template>，尾款付清后安排发货
+              </p>
+              <p v-else-if="sub.status === 'PENDING_SHIPMENT'" class="ship muted">
+                等待商家发货<template v-if="sub.promisedShipAt"> · 承诺 {{ formatDateTime(sub.promisedShipAt) }}</template>
+              </p>
               <p v-else-if="sub.status === 'CANCELLED'" class="ship muted">子单已取消</p>
               <p v-else class="ship muted">暂无物流信息</p>
 
@@ -335,7 +345,11 @@ function actorLabel(actor: string): string {
                 <dt>运费</dt>
                 <dd>{{ order.shippingFee ? `¥${yuan(order.shippingFee)}` : '免运费' }}</dd>
               </div>
-              <div class="total"><dt>实付</dt><dd>¥{{ yuan(order.payAmount) }}</dd></div>
+              <div class="total"><dt>合计</dt><dd>¥{{ yuan(order.payAmount) }}</dd></div>
+              <template v-if="isPreorder">
+                <div><dt>定金</dt><dd>¥{{ yuan(order.deposit) }}</dd></div>
+                <div class="total"><dt>尾款</dt><dd>¥{{ yuan(order.balance) }}</dd></div>
+              </template>
             </dl>
           </section>
 

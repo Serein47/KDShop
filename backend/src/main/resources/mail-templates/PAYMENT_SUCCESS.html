@@ -6,9 +6,9 @@
     <div style="background:#ffffff;border:1px solid #ebe0d1;border-radius:16px;padding:32px;">
       <h1 style="font-size:24px;margin:0 0 16px;font-family:Georgia,'Songti SC',serif;">支付成功</h1>
       <p style="font-size:14px;line-height:1.8;margin:0 0 6px;">订单号：{{orderNo}}</p>
-      <p style="font-size:20px;font-weight:700;color:#d9480f;margin:16px 0 6px;">实付 ¥{{paidAmount}}</p>
+      <p style="font-size:20px;font-weight:700;color:#d9480f;margin:16px 0 6px;">本次支付 ¥{{paidAmount}}{{paymentLabel}}</p>
       <p style="font-size:13px;line-height:1.8;color:#8a7d6c;margin:0 0 24px;">支付时间：{{paidAt}}</p>
-      <p style="font-size:14px;line-height:1.8;margin:0 0 24px;">商家正在备货，发货后会再发一封通知邮件。</p>
+      <p style="font-size:14px;line-height:1.8;margin:0 0 24px;">我们已记录这笔付款，订单进度可在订单详情查看，发货后会再发一封通知邮件。</p>
       <p style="margin:0 0 24px;">
         <a href="{{orderUrl}}" style="display:inline-block;background:#d9480f;color:#ffffff;text-decoration:none;padding:12px 26px;border-radius:999px;font-size:14px;">查看订单</a>
       </p>

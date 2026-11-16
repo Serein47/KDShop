@@ -14,6 +14,7 @@ const router = useRouter()
 const tabs = [
   { label: '全部', value: '' },
   { label: '待付款', value: 'PENDING_PAYMENT' },
+  { label: '制作中', value: 'PRODUCING' },
   { label: '待发货', value: 'PAID' },
   { label: '已发货', value: 'SHIPPED' },
   { label: '已完成', value: 'COMPLETED' },

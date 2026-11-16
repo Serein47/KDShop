@@ -25,7 +25,7 @@ import java.util.concurrent.ThreadLocalRandom;
 
 /**
  * 模拟支付网关：创建交易、支付页结果、签名回调。
- * 回调只推进支付单状态；订单状态与库存扣减在 ISSUE-13 接入。
+ * 普通订单一次付清；预售/定制订单第一次只付定金，尾款另起一笔支付（purpose 区分）。
  */
 @Service
 public class PaymentService {
@@ -65,7 +65,7 @@ public class PaymentService {
         if (!"PENDING_PAYMENT".equals(order.getStatus())) {
             throw new BusinessException(ErrorCode.ORDER_STATE_INVALID, "订单当前状态不可支付");
         }
-        LocalDateTime expireAt = order.getCreatedAt().plusMinutes(meta.payTimeoutMinutes());
+        LocalDateTime expireAt = payExpireAt(order);
         if (LocalDateTime.now().isAfter(expireAt)) {
             throw new BusinessException(ErrorCode.ORDER_STATE_INVALID, "订单已超时，请重新下单");
         }
@@ -77,6 +77,7 @@ public class PaymentService {
             return toView(existing, expireAt);
         }
 
+        boolean depositFirst = isPreorder(order) && order.getBalanceCent() != null && order.getBalanceCent() > 0;
         Payment payment = new Payment();
         String paymentNo = "PAY" + System.currentTimeMillis()
                 + String.format("%03d", ThreadLocalRandom.current().nextInt(1000));
@@ -85,9 +86,9 @@ public class PaymentService {
         payment.setOrderId(order.getId());
         payment.setOrderNo(order.getOrderNo());
         payment.setChannel("MOCK");
-        payment.setAmountCent(order.getPayAmountCent());
+        payment.setAmountCent(depositFirst ? order.getDepositCent() : order.getPayAmountCent());
         payment.setStatus("PENDING");
-        payment.setPurpose("FULL");
+        payment.setPurpose(depositFirst ? "DEPOSIT" : "FULL");
         paymentMapper.insert(payment);
         return toView(payment, expireAt);
     }
@@ -103,7 +104,7 @@ public class PaymentService {
         if (order == null || !order.getUserId().equals(userId)) {
             throw new BusinessException(ErrorCode.RESOURCE_FORBIDDEN);
         }
-        return toView(payment, order.getCreatedAt().plusMinutes(meta.payTimeoutMinutes()));
+        return toView(payment, payExpireAt(order));
     }
 
     /** 模拟网关页面上的"支付成功 / 失败"：由服务端签名后走同一套回调。 */
@@ -178,14 +179,25 @@ public class PaymentService {
         }
         paymentMapper.updateById(patch);
         if ("SUCCESS".equals(patch.getStatus())) {
-            orderPaidService.markPaid(payment.getOrderId(), payment.getPaymentNo());
+            orderPaidService.markPaid(payment);
         }
         return Map.of("code", 0, "message", "ok");
     }
 
+    private boolean isPreorder(Order order) {
+        return "PREORDER".equals(order.getOrderType()) || "CUSTOM".equals(order.getOrderType());
+    }
+
+    private LocalDateTime payExpireAt(Order order) {
+        return isPreorder(order)
+                ? order.getCreatedAt().plusHours(meta.preorderPayTimeoutHours())
+                : order.getCreatedAt().plusMinutes(meta.payTimeoutMinutes());
+    }
+
     private PaymentView toView(Payment payment, LocalDateTime expireAt) {
         return new PaymentView(payment.getPaymentNo(), payment.getOrderNo(), payment.getAmountCent(),
-                payment.getStatus(), "/mock-pay/" + payment.getPaymentNo(), expireAt, payment.getPaidAt());
+                payment.getPurpose(), payment.getStatus(), "/mock-pay/" + payment.getPaymentNo(),
+                expireAt, payment.getPaidAt());
     }
 
     private Long currentUserId() {

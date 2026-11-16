@@ -78,19 +78,31 @@ public class OrderMaintenanceService {
     }
 
     public int cancelExpiredOrders() {
-        LocalDateTime deadline = LocalDateTime.now().minusMinutes(meta.payTimeoutMinutes());
-        List<Order> expired = orderMapper.selectList(new LambdaQueryWrapper<Order>()
+        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime oldestDeadline = now.minusMinutes(meta.payTimeoutMinutes());
+        List<Order> candidates = orderMapper.selectList(new LambdaQueryWrapper<Order>()
                 .eq(Order::getStatus, "PENDING_PAYMENT")
-                .lt(Order::getCreatedAt, deadline)
+                .lt(Order::getCreatedAt, oldestDeadline)
                 .last("LIMIT 50"));
         int count = 0;
-        for (Order order : expired) {
+        for (Order order : candidates) {
+            // 预售/定制给 24 小时付定金，普通订单 15 分钟；查询先用最紧的线捞出来再逐单判断
+            if (now.isBefore(payDeadline(order))) {
+                continue;
+            }
             Boolean done = tx.execute(status -> cancelOne(order));
             if (Boolean.TRUE.equals(done)) {
                 count++;
             }
         }
         return count;
+    }
+
+    private LocalDateTime payDeadline(Order order) {
+        boolean preorder = "PREORDER".equals(order.getOrderType()) || "CUSTOM".equals(order.getOrderType());
+        return preorder
+                ? order.getCreatedAt().plusHours(meta.preorderPayTimeoutHours())
+                : order.getCreatedAt().plusMinutes(meta.payTimeoutMinutes());
     }
 
     private boolean cancelOne(Order order) {

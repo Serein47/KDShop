@@ -5,7 +5,9 @@ import com.kdshop.common.BusinessException;
 import com.kdshop.common.ErrorCode;
 import com.kdshop.config.MetaProperties;
 import com.kdshop.order.OrderPaidService;
+import com.kdshop.order.entity.Order;
 import com.kdshop.order.mapper.OrderMapper;
+import com.kdshop.payment.dto.PaymentView;
 import com.kdshop.payment.entity.Payment;
 import com.kdshop.payment.mapper.PaymentMapper;
 import org.junit.jupiter.api.BeforeEach;
@@ -15,10 +17,14 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.time.Instant;
+import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -39,7 +45,7 @@ class PaymentServiceTest {
 
     private PaymentSigner signer;
     private PaymentService service;
-    private final MetaProperties meta = new MetaProperties("CNY", "Asia/Shanghai", 9900, 1000, 15, 15, 7);
+    private final MetaProperties meta = new MetaProperties("CNY", "Asia/Shanghai", 9900, 1000, 15, 15, 7, 24);
 
     @BeforeEach
     void setUp() {
@@ -131,7 +137,31 @@ class PaymentServiceTest {
 
         assertThat(result.get("closed")).isEqualTo(true);
         verify(paymentMapper, org.mockito.Mockito.never()).updateById(any(Payment.class));
-        verify(orderPaidService, org.mockito.Mockito.never()).markPaid(any(), anyString());
+        verify(orderPaidService, org.mockito.Mockito.never()).markPaid(any(Payment.class));
+    }
+
+    @Test
+    void preorderCreatesDepositPaymentOnly() {
+        SecurityContextHolder.getContext().setAuthentication(
+                UsernamePasswordAuthenticationToken.authenticated(1L, null, List.of()));
+        Order order = new Order();
+        order.setId(1L);
+        order.setOrderNo("KD202611160001");
+        order.setUserId(1L);
+        order.setStatus("PENDING_PAYMENT");
+        order.setOrderType("CUSTOM");
+        order.setPayAmountCent(16800);
+        order.setDepositCent(5000);
+        order.setBalanceCent(11800);
+        order.setCreatedAt(LocalDateTime.now());
+        when(orderMapper.selectOne(any())).thenReturn(order);
+        when(paymentMapper.selectOne(any())).thenReturn(null);
+
+        PaymentView view = service.create("KD202611160001");
+
+        assertThat(view.purpose()).isEqualTo("DEPOSIT");
+        assertThat(view.amount()).isEqualTo(5000);
+        SecurityContextHolder.clearContext();
     }
 
     private Map<String, String> basePayload(int amount) {

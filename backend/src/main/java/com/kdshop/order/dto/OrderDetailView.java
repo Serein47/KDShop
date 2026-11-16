@@ -15,6 +15,9 @@ public record OrderDetailView(
         int discount,
         int shippingFee,
         int payAmount,
+        String orderType,
+        int deposit,
+        int balance,
         AddressView address,
         String remark,
         LocalDateTime createdAt,
@@ -58,6 +61,7 @@ public record OrderDetailView(
             String status,
             int payAmount,
             LocalDateTime shippedAt,
+            LocalDateTime promisedShipAt,
             ShipmentView shipment,
             List<ItemView> items,
             List<String> actions

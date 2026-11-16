@@ -22,6 +22,7 @@ export async function createOrder(payload: {
 
 export type OrderStatus =
   | 'PENDING_PAYMENT'
+  | 'PRODUCING'
   | 'PAID'
   | 'PARTIALLY_SHIPPED'
   | 'SHIPPED'
@@ -81,6 +82,7 @@ export interface SubOrderView {
   status: string
   payAmount: number
   shippedAt?: string | null
+  promisedShipAt?: string | null
   shipment?: { carrier: string; trackingNo: string } | null
   items: OrderItemView[]
   actions: string[]
@@ -93,6 +95,11 @@ export interface OrderDetail {
   discount: number
   shippingFee: number
   payAmount: number
+  orderType: 'NORMAL' | 'PREORDER' | 'CUSTOM'
+  /** 定金，分；普通订单为 0 */
+  deposit: number
+  /** 尾款，分；普通订单为 0 */
+  balance: number
   address?: OrderAddress | null
   remark?: string | null
   createdAt: string

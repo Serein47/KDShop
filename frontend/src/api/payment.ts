@@ -4,6 +4,8 @@ export interface PaymentView {
   paymentNo: string
   orderNo: string
   amount: number
+  /** FULL 一次付清 / DEPOSIT 定金 / BALANCE 尾款 */
+  purpose: 'FULL' | 'DEPOSIT' | 'BALANCE'
   status: 'PENDING' | 'SUCCESS' | 'FAILED' | 'CLOSED' | 'REFUNDED'
   payUrl: string
   expireAt: string

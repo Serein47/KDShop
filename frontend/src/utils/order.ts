@@ -2,6 +2,7 @@ import type { OrderStatus } from '@/api/order'
 
 const ORDER_LABELS: Record<string, string> = {
   PENDING_PAYMENT: '待付款',
+  PRODUCING: '制作中',
   PAID: '已付款',
   PARTIALLY_SHIPPED: '部分发货',
   SHIPPED: '已发货',

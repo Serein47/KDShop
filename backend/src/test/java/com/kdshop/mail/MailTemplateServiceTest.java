@@ -50,9 +50,10 @@ class MailTemplateServiceTest {
                 objectMapper.writeValueAsString(Map.of(
                         "orderNo", "KD202611030001",
                         "paidAmount", "128.00",
+                        "paymentLabel", "",
                         "paidAt", "2026-11-03 17:30",
                         "orderUrl", "http://localhost:5173/orders/KD202611030001")));
-        assertThat(payment.html()).contains("实付 ¥128.00").contains("查看订单");
+        assertThat(payment.html()).contains("本次支付 ¥128.00").contains("查看订单");
 
         var shipped = service.render(MailTemplateType.ORDER_SHIPPED,
                 objectMapper.writeValueAsString(Map.of(

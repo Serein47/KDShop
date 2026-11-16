@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { onMounted, ref, computed } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { completeMockPayment, fetchPayment, type PaymentView } from '@/api/payment'
@@ -9,6 +9,22 @@ const route = useRoute()
 const payment = ref<PaymentView | null>(null)
 const busy = ref(false)
 const failed = ref(false)
+
+const purposeLabel = computed(() => {
+  if (payment.value?.purpose === 'DEPOSIT') return '定金'
+  if (payment.value?.purpose === 'BALANCE') return '尾款'
+  return ''
+})
+
+const successText = computed(() => {
+  if (payment.value?.purpose === 'DEPOSIT') {
+    return '定金已入账，订单转为「制作中」，商家按承诺工期制作；尾款在发货前支付。'
+  }
+  if (payment.value?.purpose === 'BALANCE') {
+    return '尾款已入账，订单转为「已付款」，商家开始安排发货。'
+  }
+  return '订单已转为「已付款」，库存已扣减。'
+})
 
 onMounted(async () => {
   try {
@@ -42,6 +58,7 @@ async function finish(success: boolean) {
 
       <template v-else-if="payment">
         <p class="amount">¥{{ yuan(payment.amount) }}</p>
+        <p v-if="purposeLabel" class="purpose">{{ purposeLabel }}</p>
         <p class="meta">订单 {{ payment.orderNo }}</p>
         <p class="meta">支付单 {{ payment.paymentNo }}</p>
 
@@ -56,7 +73,7 @@ async function finish(success: boolean) {
           </p>
           <p class="meta">
             {{ payment.status === 'SUCCESS'
-              ? '订单已转为「已付款」，库存已扣减。'
+              ? successText
               : '支付未完成，可以回订单详情重新发起支付。' }}
           </p>
           <div class="result__actions">
@@ -76,6 +93,15 @@ async function finish(success: boolean) {
 .card { width: min(460px, 100%); background: #fff; border-radius: 22px; padding: 36px 32px; box-shadow: var(--shadow); text-align: center; }
 .card h1 { font-size: 28px; margin: 8px 0 20px; }
 .amount { font-size: 42px; font-weight: 700; color: var(--rust); margin: 0 0 6px; }
+.purpose {
+  display: inline-block;
+  margin: 0 0 8px;
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: var(--rust-soft);
+  color: var(--rust);
+  font-size: 12px;
+}
 .meta { color: var(--muted); font-size: 13px; margin: 2px 0; }
 .actions { display: grid; gap: 12px; margin: 26px 0 6px; }
 .actions .btn { justify-content: center; }

@@ -59,7 +59,17 @@ export interface PreviewUnusable {
 
 export interface CheckoutPreview {
   subOrders: PreviewSubOrder[]
-  summary: { goodsAmount: number; discount: number; shippingFee: number; payAmount: number }
+  summary: {
+    goodsAmount: number
+    discount: number
+    shippingFee: number
+    payAmount: number
+    orderType: 'NORMAL' | 'PREORDER' | 'CUSTOM'
+    /** 定金，分；普通订单为 0 */
+    deposit: number
+    /** 尾款，分；普通订单为 0 */
+    balance: number
+  }
   coupons: { usable: PreviewCoupon[]; unusable: PreviewUnusable[] }
   address: { receiver: string; phone: string; province: string; city: string; district: string; detail: string } | null
 }

@@ -13,7 +13,7 @@ const dialog = ref(false)
 
 function label(s: string) {
   const map: Record<string, string> = {
-    PENDING_PAYMENT: '待付款', PAID: '已付款', PENDING_SHIPMENT: '待发货', PARTIALLY_SHIPPED: '部分发货',
+    PENDING_PAYMENT: '待付款', PRODUCING: '制作中', PAID: '已付款', PENDING_SHIPMENT: '待发货', PARTIALLY_SHIPPED: '部分发货',
     SHIPPED: '已发货', COMPLETED: '已完成', CANCELLED: '已取消', REFUNDED: '已退款',
     PARTIALLY_REFUNDED: '部分退款', SUSPENDED: '已封禁',
   }
@@ -53,6 +53,7 @@ async function openDetail(item: AdminOrder) {
       <select v-model="status" @change="load">
         <option value="">全部状态</option>
         <option value="PENDING_PAYMENT">待付款</option>
+        <option value="PRODUCING">制作中</option>
         <option value="PAID">已付款</option>
         <option value="SHIPPED">已发货</option>
         <option value="COMPLETED">已完成</option>
