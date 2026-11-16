@@ -18,6 +18,20 @@ export interface Settlement {
   createdAt: string
 }
 
+export interface RefundLine {
+  refundNo: string
+  amount: number
+  reason?: string
+  finishedAt?: string
+}
+
+export interface PenaltyLine {
+  penaltyNo: string
+  daysOverdue: number
+  amount: number
+  createdAt?: string
+}
+
 export interface SettlementItem {
   subOrderNo: string
   grossAmount: number
@@ -25,6 +39,10 @@ export interface SettlementItem {
   refund: number
   penalty: number
   netAmount: number
+  /** 该子单的每一笔退款 */
+  refunds: RefundLine[]
+  /** 该子单的每一天赔付 */
+  penalties: PenaltyLine[]
 }
 
 export interface SettlementDetail {

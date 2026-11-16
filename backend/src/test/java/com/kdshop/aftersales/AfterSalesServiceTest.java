@@ -130,6 +130,12 @@ class AfterSalesServiceTest {
         assertThat(view.evidence()).containsExactly("a.jpg", "b.jpg");
         verify(afterSaleMapper).insert(any(AfterSale.class));
         verify(logMapper).insert(any(AfterSaleLog.class));
+
+        @SuppressWarnings("unchecked")
+        org.mockito.ArgumentCaptor<com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper<MerchantOrder>> freeze =
+                org.mockito.ArgumentCaptor.forClass(com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper.class);
+        verify(merchantOrderMapper).update(any(), freeze.capture());
+        assertThat(freeze.getValue().getSqlSet()).contains("after_sales_frozen");
     }
 
     @Test

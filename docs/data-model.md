@@ -113,6 +113,8 @@ erDiagram
 6. 一个子单同时最多一条进行中的退款；重复申请返回 409
 7. `settlement_items` 中同一子单只能出现一次（唯一索引兜底），防止重复结算
 8. 预售/定制订单：`orders.deposit_cent + orders.balance_cent = orders.pay_amount_cent`；子单 `promised_ship_at` 不早于定金支付时间
+9. 售后中的子单 `merchant_orders.after_sales_frozen = 1`，结算生成必须跳过；驳回/关闭后置 0，退款完成则子单转 `REFUNDED`
+10. 结算口径：`settlements.net = gross - commission - refund - penalty`，且等于 `settlement_items` 各行之和
 8. 商家被 `SUSPENDED` 后：商品全部下架、未发货子单仍可发货（避免伤到已付款顾客）、不能上新
 
 ## 索引与容量

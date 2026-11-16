@@ -155,6 +155,7 @@ public class AfterSalesService {
         afterSaleMapper.insert(afterSale);
 
         writeLog(afterSale.getId(), null, "APPLIED", "USER", userId, "提交售后申请");
+        freezeSettlement(sub.getId(), true);
         audit("USER", userId, "AFTER_SALES_APPLY", afterSale.getAsNo(),
                 Map.of("type", type, "reason", reasonCode));
         return view(afterSale, true);
@@ -218,6 +219,7 @@ public class AfterSalesService {
             afterSale.setOperatorType("MERCHANT");
             afterSale.setOperatorId(shop.getId());
             afterSaleMapper.updateById(afterSale);
+            freezeSettlement(afterSale.getMerchantOrderId(), false);
             writeLog(afterSale.getId(), "APPLIED", "REJECTED", "MERCHANT", shop.getId(),
                     "驳回：" + request.reason().trim());
             audit("MERCHANT", shop.getId(), "AFTER_SALES_REJECT", asNo,
@@ -239,6 +241,7 @@ public class AfterSalesService {
             afterSale.setRefundNo(refund.getRefundNo());
             afterSale.setCompletedAt(LocalDateTime.now());
             afterSaleMapper.updateById(afterSale);
+            freezeSettlement(afterSale.getMerchantOrderId(), false);
             writeLog(afterSale.getId(), "APPROVED", "REFUNDED", "SYSTEM", null,
                     "仅退款完成：" + refund.getRefundNo());
         } else {
@@ -282,9 +285,10 @@ public class AfterSalesService {
         afterSale.setStatus("APPLIED");
         afterSale.setReviewDueAt(LocalDateTime.now().plusHours(meta.afterSalesReviewHours()));
         afterSale.setRejectReason(null);
-        afterSale.setReapplyCount((afterSale.getReapplyCount() == null ? 0 : afterSale.getReapplyCount()) + 1);
+            afterSale.setReapplyCount((afterSale.getReapplyCount() == null ? 0 : afterSale.getReapplyCount()) + 1);
         afterSaleMapper.updateById(afterSale);
         writeLog(afterSale.getId(), "REJECTED", "APPLIED", "USER", userId, "补充证据重新申请");
+        freezeSettlement(afterSale.getMerchantOrderId(), true);
         return view(afterSale, true);
     }
 
@@ -409,6 +413,7 @@ public class AfterSalesService {
         afterSale.setRefundNo(refund.getRefundNo());
         afterSale.setCompletedAt(LocalDateTime.now());
         afterSaleMapper.updateById(afterSale);
+        freezeSettlement(afterSale.getMerchantOrderId(), false);
         writeLog(afterSale.getId(), "INSPECTED", "REFUNDED", "SYSTEM", null,
                 "退款完成：" + refund.getRefundNo()
                         + ("GOOD".equals(result) ? "（良品已回补库存）" : "（残次不回补库存）"));
@@ -453,6 +458,7 @@ public class AfterSalesService {
         if (updated == 0) {
             return false;
         }
+        freezeSettlement(afterSale.getMerchantOrderId(), false);
         writeLog(afterSaleId, "RETURNING", "CLOSED", "SYSTEM", null, "超时未填写寄回物流，售后关闭");
         return true;
     }
@@ -492,6 +498,7 @@ public class AfterSalesService {
             afterSale.setRefundNo(refund.getRefundNo());
             afterSale.setCompletedAt(LocalDateTime.now());
             afterSaleMapper.updateById(afterSale);
+            freezeSettlement(afterSale.getMerchantOrderId(), false);
             writeLog(afterSaleId, "APPROVED", "REFUNDED", "SYSTEM", null,
                     "自动退款完成：" + refund.getRefundNo());
             audit("SYSTEM", null, "AFTER_SALES_AUTO_APPROVE", afterSale.getAsNo(),
@@ -548,6 +555,7 @@ public class AfterSalesService {
             afterSale.setStatus("REJECTED");
             afterSale.setRejectReason(note);
             afterSaleMapper.updateById(afterSale);
+            freezeSettlement(afterSale.getMerchantOrderId(), false);
             writeLog(afterSale.getId(), from, "REJECTED", "ADMIN", adminId, "平台裁决驳回：" + note);
             audit("ADMIN", adminId, "AFTER_SALES_VERDICT", asNo,
                     Map.of("decision", "REJECT", "responsibility", responsibility));
@@ -564,6 +572,7 @@ public class AfterSalesService {
             afterSale.setRefundNo(refund.getRefundNo());
             afterSale.setCompletedAt(LocalDateTime.now());
             afterSaleMapper.updateById(afterSale);
+            freezeSettlement(afterSale.getMerchantOrderId(), false);
             writeLog(afterSale.getId(), "APPROVED", "REFUNDED", "SYSTEM", null,
                     "平台裁决退款完成：" + refund.getRefundNo());
         } else {
@@ -741,6 +750,13 @@ public class AfterSalesService {
         log.setOperatorId(operatorId);
         log.setNote(note);
         logMapper.insert(log);
+    }
+
+    /** 售后期间冻结结算：进入售后置 1，关闭或退款完成后置 0（ISSUE-40）。 */
+    private void freezeSettlement(Long merchantOrderId, boolean frozen) {
+        merchantOrderMapper.update(null, new UpdateWrapper<MerchantOrder>()
+                .eq("id", merchantOrderId)
+                .set("after_sales_frozen", frozen ? 1 : 0));
     }
 
     private void audit(String operatorType, Long operatorId, String action, String target,
