@@ -17,6 +17,8 @@ public class SettlementItem {
     private Long merchantOrderId;
     private Integer grossAmountCent;
     private Integer commissionCent;
+    private Integer refundCent;
+    private Integer penaltyCent;
     private Integer netAmountCent;
     private LocalDateTime createdAt;
 }

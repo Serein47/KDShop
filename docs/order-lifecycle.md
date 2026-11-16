@@ -163,12 +163,31 @@ stateDiagram-v2
 金额口径：
 
 ```
-gross   = 子单实付金额（商品金额 - 分摊优惠 + 运费）
+gross      = 子单实付金额（商品金额 - 分摊优惠 + 运费）
 commission = round(gross × 商家费率)
-net     = gross - commission
+net        = gross - commission - refund - penalty
 ```
 
 退款发生在结算前的，直接不计入；退款发生在结算后的，从下一期结算中扣减（`refund_cent` 字段）。
+赔付取该子单 `PENDING` 的 `penalties` 之和（`penalty_cent`），生成结算时一并扣减并置为 `SETTLED`。
+
+## 工期超时赔付
+
+```mermaid
+stateDiagram-v2
+    [*] --> PENDING
+    PENDING: 待结算
+    SETTLED: 已结算
+
+    PENDING --> SETTLED : 结算单生成时扣减
+```
+
+- 触发：子单处于 `PRODUCING` / `PENDING_SHIPMENT`，已过 `promised_ship_at` 且未发货
+- 基数：主单定金按子单实付占比分摊，`base = round(order.deposit_cent × sub.pay_amount_cent / order.pay_amount_cent)`
+- 每天 `round(base × 5%)`，累计上限 `round(base × 50%)`；同子单同一天唯一（`uk_penalties_mo_day`）
+- 漏跑可补：从「已记最大天数 + 1」补到当前逾期天数
+- 一旦生成不因最终发货而撤回；只在结算时扣减，不向顾客钱包打款（首版）
+- 子单被关闭（尾款逾期）后不再继续生成，已有赔付随订单作废
 
 ## 与库存的关系
 
@@ -187,7 +206,8 @@ net     = gross - commission
 | 尾款通知 | 每 60 秒 | 扫 `PRODUCING` 且未通知、`promised_ship_at - 3 天 <= now`，写 `balance_notified_at` / `balance_due_at`、发 outbox |
 | 尾款逾期关闭 | 每 60 秒 | 扫 `PRODUCING` 且 `balance_due_at < now`，关闭订单（定金不退、库存不回补、券不退还） |
 | 自动确认收货 | 每小时 | 扫 `SHIPPED` 且 `shipped_at < now - 15d` 的子单，转完成并重算主单 |
-| 结算生成 | 每日 | 汇总可结算子单，按商家生成结算单 |
+| 工期赔付 | 每 60 秒 | 扫 `PRODUCING` / `PENDING_SHIPMENT` 且 `promised_ship_at < now` 的未发货子单，按天补 `penalties`（5%/天，上限 50% 定金） |
+| 结算生成 | 每日 | 汇总可结算子单，按商家生成结算单（扣佣金、退款与赔付） |
 | 结算对账 | 每日 | 校验 `Σ settlement_items` 与已完成子单一致，差异告警 |
 
 超时取消用「扫描 + 条件更新」而非延迟队列：链条短、可重跑、出问题好查（ADR-0002 同理）。

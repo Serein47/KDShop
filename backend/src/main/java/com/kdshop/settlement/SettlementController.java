@@ -2,6 +2,7 @@ package com.kdshop.settlement;
 
 import com.kdshop.common.ApiResponse;
 import com.kdshop.settlement.dto.GenerateRequest;
+import com.kdshop.settlement.dto.SettlementDetailView;
 import com.kdshop.settlement.dto.SettlementView;
 import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -41,5 +42,15 @@ public class SettlementController {
     @GetMapping("/merchant/settlements")
     public ApiResponse<List<SettlementView>> mine() {
         return ApiResponse.ok(settlementService.listMine());
+    }
+
+    @GetMapping("/merchant/settlements/{settlementNo}")
+    public ApiResponse<SettlementDetailView> mineDetail(@PathVariable String settlementNo) {
+        return ApiResponse.ok(settlementService.detail(settlementNo));
+    }
+
+    @GetMapping("/admin/settlements/{settlementNo}")
+    public ApiResponse<SettlementDetailView> detail(@PathVariable String settlementNo) {
+        return ApiResponse.ok(settlementService.detail(settlementNo));
     }
 }
