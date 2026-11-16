@@ -6,6 +6,7 @@ import java.util.List;
 public record AdminUserView(
         Long id,
         String email,
+        String phone,
         String nickname,
         String status,
         List<String> roles,

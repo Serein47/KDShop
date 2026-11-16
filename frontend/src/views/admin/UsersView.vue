@@ -87,11 +87,12 @@ async function saveRoles() {
     <div v-if="loading" class="state">加载中…</div>
     <table v-else class="table">
       <thead>
-        <tr><th>账号</th><th>昵称</th><th>角色</th><th>状态</th><th>最近登录</th><th></th></tr>
+        <tr><th>账号（脱敏）</th><th>手机号</th><th>昵称</th><th>角色</th><th>状态</th><th>最近登录</th><th></th></tr>
       </thead>
       <tbody>
         <tr v-for="u in list" :key="u.id">
           <td>{{ u.email }}</td>
+          <td>{{ u.phone || '—' }}</td>
           <td>{{ u.nickname }}</td>
           <td>
             <span v-for="r in u.roles" :key="r" class="tag">{{ ROLE_LABELS[r] || r }}</span>

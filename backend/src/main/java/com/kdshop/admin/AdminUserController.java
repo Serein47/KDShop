@@ -30,6 +30,11 @@ public class AdminUserController {
         return ApiResponse.ok(adminUserService.list(keyword, status));
     }
 
+    @GetMapping("/{id}")
+    public ApiResponse<AdminUserView> detail(@PathVariable Long id) {
+        return ApiResponse.ok(adminUserService.detail(id));
+    }
+
     @PostMapping("/{id}/disable")
     public ApiResponse<AdminUserView> disable(@PathVariable Long id, @RequestBody(required = false) Map<String, String> body) {
         String reason = body == null ? null : body.get("reason");
