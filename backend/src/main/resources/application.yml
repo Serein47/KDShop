@@ -97,5 +97,9 @@ kdshop:
     preorder-pay-timeout-hours: 24
     balance-notify-days-before: 3
     balance-pay-days: 7
+    after-sales-window-days: 15
+    after-sales-review-hours: 48
+    after-sales-return-days: 7
+    after-sales-inspect-hours: 48
     auto-confirm-days: 15
     settlement-protection-days: 7
