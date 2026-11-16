@@ -50,7 +50,7 @@ async function shot(name) {
 }
 
 async function mailTokenFor(email) {
-  for (let i = 0; i < 15; i++) {
+  for (let i = 0; i < 40; i++) {
     const res = await fetch(`${MAILPIT}/api/v1/search?query=to:${encodeURIComponent(email)}`)
     if (res.ok) {
       const data = await res.json()
@@ -216,30 +216,31 @@ const scenarios = [
     },
   },
   {
-    name: '退款申请与平台裁决',
+    name: '售后申请与商家同意退款',
     async run(ctx) {
       await logout()
       await login('customer@kdshop.dev', 'Demo@123456')
       await page.goto(BASE + '/orders/' + ctx.orderNo, { waitUntil: 'networkidle' })
       await page.waitForTimeout(1000)
-      await page.getByRole('button', { name: '申请退款' }).first().click()
+      await page.getByRole('button', { name: '申请售后' }).first().click()
       await page.waitForTimeout(600)
-      await page.locator('.el-dialog textarea').fill('E2E：不想要了')
-      await page.getByRole('button', { name: '提交申请' }).click()
-      await page.waitForTimeout(1800)
-      const mine = await api('/refunds')
-      const refund = (mine.json.data ?? []).find((r) => r.subOrderNo === ctx.orderNo + '-1' && r.status === 'PENDING')
-      assert.ok(refund || (mine.json.data ?? []).some((r) => r.status === 'PENDING'), 'refund not created')
+      await page.locator('.el-dialog textarea').fill('E2E：杯口有缺口')
+      await page.getByRole('button', { name: '提交' }).click()
+      await page.waitForTimeout(2000)
+      const mine = await api('/me/after-sales')
+      assert.ok((mine.json.data ?? []).some((r) => r.status === 'APPLIED'),
+        'after-sale not created: ' + JSON.stringify(mine.json))
       await logout()
-      await login('admin@kdshop.dev', 'Demo@123456')
-      await page.goto(BASE + '/admin/refunds', { waitUntil: 'networkidle' })
+      await login('merchant1@kdshop.dev', 'Demo@123456')
+      await page.goto(BASE + '/merchant/after-sales', { waitUntil: 'networkidle' })
       await page.waitForTimeout(1200)
-      await page.getByRole('button', { name: '判给买家' }).first().click()
+      await page.getByRole('button', { name: '同意' }).first().click()
       await page.waitForTimeout(600)
-      await page.getByRole('button', { name: '确定' }).click()
-      await page.waitForTimeout(1800)
-      const all = await api('/admin/refunds?status=REFUNDED')
-      assert.ok((all.json.data ?? []).length > 0, 'no refunded record')
+      await page.locator('.el-message-box').getByRole('button', { name: '同意' }).click()
+      await page.waitForTimeout(2500)
+      const done = await api('/merchant/after-sales')
+      assert.ok((done.json.data ?? []).some((r) => r.status === 'REFUNDED'),
+        'after-sale not refunded: ' + JSON.stringify(done.json))
     },
   },
 ]
