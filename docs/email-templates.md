@@ -77,8 +77,8 @@
 | 收件人 | 下单账号邮箱 |
 | 业务键 | `order_shipped:{orderNo}` |
 | 主题 | 你的订单 {orderNo} 已发货 |
-| 变量 | `orderNo`、`carrier`、`trackingNo`、`shippedAt`、`orderUrl` |
-| 正文要点 | 承运商、单号、查看订单入口 |
+| 变量 | `orderNo`、`carrier`、`trackingNo`、`shippedAt`、`giftNote`（礼物包装/贺卡提示，非礼物为空串）、`orderUrl` |
+| 正文要点 | 承运商、单号、礼物提示、查看订单入口 |
 
 ### 5. `REFUND_SUCCESS` 退款成功（P1）
 

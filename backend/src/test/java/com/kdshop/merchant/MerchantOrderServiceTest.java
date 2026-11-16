@@ -116,6 +116,9 @@ class MerchantOrderServiceTest {
         order.setOrderNo("KD1");
         order.setUserId(1L);
         order.setStatus("PAID");
+        order.setIsGift(1);
+        order.setGiftWrap(1);
+        order.setGiftMessage("生日快乐");
         order.setAddressJson("{\"receiver\":\"张三\",\"phone\":\"13800008000\",\"province\":\"浙江省\",\"city\":\"杭州市\",\"district\":\"西湖区\",\"detail\":\"文三路 1 号\"}");
         when(orderMapper.selectById(5L)).thenReturn(order);
         when(merchantOrderMapper.selectCount(any())).thenReturn(1L);
@@ -125,7 +128,14 @@ class MerchantOrderServiceTest {
         var view = service.ship("KD1-1", new ShipRequest("顺丰速运", "SF1"));
 
         assertThat(view.subOrderNo()).isEqualTo("KD1-1");
-        verify(emailOutboxMapper).insert(any(EmailOutbox.class));
+        assertThat(view.isGift()).isTrue();
+        assertThat(view.giftMessage()).isEqualTo("生日快乐");
+
+        org.mockito.ArgumentCaptor<EmailOutbox> outbox = org.mockito.ArgumentCaptor.forClass(EmailOutbox.class);
+        verify(emailOutboxMapper).insert(outbox.capture());
+        assertThat(outbox.getValue().getPayloadJson())
+                .contains("礼物包装")
+                .contains("贺卡：生日快乐");
         verify(statusLogMapper).insert(any(com.kdshop.order.entity.OrderStatusLog.class));
     }
 

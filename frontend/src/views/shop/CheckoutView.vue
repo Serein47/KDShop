@@ -22,6 +22,9 @@ const showForm = ref(false)
 const form = ref({ receiver: '', phone: '', province: '', city: '', district: '', detail: '' })
 const submitting = ref(false)
 const flawAck = ref(false)
+const isGift = ref(false)
+const giftWrap = ref(false)
+const giftMessage = ref('')
 const buyNowItems = ref<{ skuId: number; quantity: number; options?: { optionId: number; value: string }[] }[] | null>(null)
 
 const needsFlawAck = computed(() =>
@@ -147,6 +150,9 @@ async function placeOrder() {
         couponId: couponId.value,
         items: buyNowItems.value ?? undefined,
         flawAck: needsFlawAck.value ? true : undefined,
+        isGift: isGift.value || undefined,
+        giftWrap: isGift.value ? giftWrap.value : undefined,
+        giftMessage: isGift.value && giftMessage.value.trim() ? giftMessage.value.trim() : undefined,
       },
       idempotencyKey(),
     )
@@ -253,6 +259,28 @@ async function placeOrder() {
               <span>小计 ¥{{ yuan(sub.payAmount) }}</span>
             </div>
           </div>
+        </section>
+
+        <section class="block gift">
+          <div class="block__head">
+            <h2>礼物选项</h2>
+            <span class="muted">不影响金额与库存</span>
+          </div>
+          <label class="gift__check">
+            <input v-model="isGift" type="checkbox" />
+            这是一份礼物（可加礼物包装与贺卡）
+          </label>
+          <template v-if="isGift">
+            <label class="gift__check">
+              <input v-model="giftWrap" type="checkbox" />
+              礼物包装
+            </label>
+            <label class="gift__msg">
+              贺卡内容（{{ giftMessage.length }}/100）
+              <textarea v-model="giftMessage" maxlength="100" rows="2"
+                placeholder="写下想说的话，会随包裹一起寄出" />
+            </label>
+          </template>
         </section>
 
         <section v-if="needsFlawAck" class="block flaw">
@@ -405,6 +433,12 @@ async function placeOrder() {
 .flaw__note { font-size: 13px; color: var(--ink-soft); line-height: 1.8; margin: 0 0 8px; }
 .flaw__ack { display: flex; gap: 8px; align-items: flex-start; font-size: 13px; color: var(--ink); cursor: pointer; }
 .flaw__ack input { margin-top: 3px; }
+.gift__check { display: flex; gap: 8px; align-items: center; font-size: 13px; color: var(--ink); cursor: pointer; margin-bottom: 8px; }
+.gift__msg { display: grid; gap: 6px; font-size: 12px; color: var(--muted); }
+.gift__msg textarea {
+  padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px;
+  font-family: inherit; font-size: 14px; resize: vertical;
+}
 .submit { width: 100%; justify-content: center; margin-top: 18px; }
 .hint { font-size: 11px; color: var(--muted); margin-top: 10px; line-height: 1.6; }
 .state { padding: 90px 0; text-align: center; color: var(--muted); }

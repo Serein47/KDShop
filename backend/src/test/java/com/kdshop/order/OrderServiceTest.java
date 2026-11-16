@@ -139,6 +139,22 @@ class OrderServiceTest {
     }
 
     @Test
+    void giftOptionsAreSavedOnOrder() {
+        when(redis.opsForValue()).thenReturn(valueOps);
+        when(checkoutService.preview(any(CheckoutRequest.class))).thenReturn(preview());
+        when(skuMapper.lockStock(any(), any(Integer.class).intValue())).thenReturn(1);
+        when(valueOps.increment(anyString())).thenReturn(1L);
+
+        service.create(new CreateOrderRequest(null, null, null, null, true, "生日快乐", true, null), null);
+
+        org.mockito.ArgumentCaptor<Order> captor = org.mockito.ArgumentCaptor.forClass(Order.class);
+        verify(orderMapper).insert(captor.capture());
+        assertThat(captor.getValue().getIsGift()).isEqualTo(1);
+        assertThat(captor.getValue().getGiftMessage()).isEqualTo("生日快乐");
+        assertThat(captor.getValue().getGiftWrap()).isEqualTo(1);
+    }
+
+    @Test
     void artworkOrderWithoutAckIsRejected() {
         when(checkoutService.preview(any(CheckoutRequest.class))).thenReturn(flawPreview());
 

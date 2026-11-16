@@ -355,6 +355,12 @@ function actorLabel(actor: string): string {
             <p v-else class="muted">地址快照不可用。</p>
           </section>
 
+          <section v-if="order.isGift" class="card">
+            <div class="card__head"><h2>礼物</h2></div>
+            <p class="gift-line">礼物包装：{{ order.giftWrap ? '是' : '否' }}</p>
+            <p v-if="order.giftMessage" class="gift-line">贺卡：{{ order.giftMessage }}</p>
+          </section>
+
           <section class="card">
             <div class="card__head"><h2>金额</h2></div>
             <dl class="money">
@@ -499,6 +505,7 @@ function actorLabel(actor: string): string {
 .item__main span { color: var(--muted); font-size: 12px; }
 .flaw-tag { margin-left: 8px; color: var(--rust); border: 1px solid var(--rust); border-radius: 999px; padding: 1px 7px; font-size: 10px; }
 .item-options { display: block; color: var(--rust); font-size: 12px; margin-top: 2px; }
+.gift-line { margin: 0 0 4px; font-size: 13px; color: var(--ink-soft); }
 .item strong { font-size: 13px; white-space: nowrap; }
 
 .sub__foot { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding-top: 14px; flex-wrap: wrap; }

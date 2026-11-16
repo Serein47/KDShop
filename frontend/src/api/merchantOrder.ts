@@ -25,6 +25,9 @@ export interface MerchantSubOrder {
   receiver?: string
   phone?: string
   address?: string
+  isGift: boolean
+  giftMessage?: string | null
+  giftWrap: boolean
   items: MerchantSubOrderItem[]
 }
 

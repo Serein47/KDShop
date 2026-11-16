@@ -4,6 +4,7 @@ KDShop · 你的订单已发货
 承运商：{{carrier}}
 运单号：{{trackingNo}}
 发货时间：{{shippedAt}}
+{{giftNote}}
 
 查看订单：
 {{orderUrl}}
