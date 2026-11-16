@@ -28,6 +28,9 @@ public class Order {
     private Integer depositCent;
     private Integer balanceCent;
     private LocalDateTime promisedShipAt;
+    private LocalDateTime balanceNotifiedAt;
+    private LocalDateTime balanceDueAt;
+    private LocalDateTime balancePaidAt;
     private Integer penaltyCent;
     private Integer isGift;
     private String giftMessage;

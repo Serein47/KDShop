@@ -45,7 +45,7 @@ class CheckoutServiceTest {
 
     private CheckoutService service;
 
-    private final MetaProperties meta = new MetaProperties("CNY", "Asia/Shanghai", 9900, 1000, 15, 15, 7, 24);
+    private final MetaProperties meta = new MetaProperties("CNY", "Asia/Shanghai", 9900, 1000, 15, 15, 7, 24, 3, 7);
 
     @BeforeEach
     void setUp() {

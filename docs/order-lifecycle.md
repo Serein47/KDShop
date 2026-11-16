@@ -22,6 +22,7 @@ stateDiagram-v2
     PENDING_PAYMENT --> PRODUCING : 定金支付成功（预售/定制）
     PRODUCING --> PAID : 尾款支付成功
     PENDING_PAYMENT --> CANCELLED : 用户取消 / 超时
+    PRODUCING --> CANCELLED : 尾款逾期
     PAID --> PARTIALLY_SHIPPED : 部分子单发货
     PAID --> SHIPPED : 全部子单一次发完
     PARTIALLY_SHIPPED --> SHIPPED : 剩余子单发货
@@ -65,6 +66,7 @@ stateDiagram-v2
     PENDING_PAYMENT --> PRODUCING : 定金支付成功（预售/定制）
     PRODUCING --> PENDING_SHIPMENT : 尾款支付成功
     PENDING_PAYMENT --> CANCELLED : 主单取消
+    PRODUCING --> CANCELLED : 尾款逾期 / 主单关闭
     PENDING_SHIPMENT --> SHIPPED : 商家发货
     SHIPPED --> COMPLETED : 顾客确认 / 超时自动
     PENDING_SHIPMENT --> REFUNDING : 顾客申请退款
@@ -80,6 +82,7 @@ stateDiagram-v2
 | 待付款 → 制作中 | 系统（定金回调） | 预售/定制订单定金支付成功 | 扣库存、写 `promised_ship_at = 支付时间 + 工期`、主单同步转制作中 |
 | 制作中 → 待发货 | 系统（尾款回调） | 尾款支付成功 | 不重复扣库存、不发新邮件（尾款邮件除外） |
 | 待付款 → 已取消 | 系统 / 用户 | 主单取消或超时（现货 15 分钟、预售/定制 24 小时） | 释放锁定库存、退券 |
+| 制作中 → 已取消 | 系统（尾款逾期） | 通知后 7 天未付清尾款 | **定金不退、库存不回补、优惠券不退还**，关闭待支付单 |
 | 待发货 → 已发货 | 商家 | 有发货权限、未在退款中 | 写 `shipments`、发发货邮件、重算主单 |
 | 已发货 → 已完成 | 顾客 / 定时任务 | 已发货 | 置 `completed_at`、重算主单 |
 | 待发货/已发货 → 退款中 | 顾客 | 无进行中的退款 | 建 `refunds`，通知商家 |
@@ -106,6 +109,8 @@ stateDiagram-v2
 ```
 
 支付挂在**主单**上，一笔支付覆盖全部子单。预售/定制订单有**两笔支付**：定金（`purpose=DEPOSIT`）与尾款（`purpose=BALANCE`），普通订单一笔（`purpose=FULL`）。
+
+尾款口径：`balance = pay_amount - deposit`（定金与尾款之和恒等于订单应付，优惠已体现在应付里）。承诺发货前 3 天写 `balance_notified_at` / `balance_due_at = now + 7 天` 并发尾款邮件；`balance_due_at` 过后仍未付清，订单转已取消（`cancel_reason=BALANCE_OVERDUE`），定金不退。
 
 回调处理顺序（缺一不可）：
 
@@ -179,6 +184,8 @@ net     = gross - commission
 | 任务 | 频率 | 动作 |
 |---|---|---|
 | 订单超时取消 | 每 60 秒 | 扫 `PENDING_PAYMENT`：普通订单超 15 分钟、预售/定制超 24 小时未付定金，逐条取消并释放库存 |
+| 尾款通知 | 每 60 秒 | 扫 `PRODUCING` 且未通知、`promised_ship_at - 3 天 <= now`，写 `balance_notified_at` / `balance_due_at`、发 outbox |
+| 尾款逾期关闭 | 每 60 秒 | 扫 `PRODUCING` 且 `balance_due_at < now`，关闭订单（定金不退、库存不回补、券不退还） |
 | 自动确认收货 | 每小时 | 扫 `SHIPPED` 且 `shipped_at < now - 15d` 的子单，转完成并重算主单 |
 | 结算生成 | 每日 | 汇总可结算子单，按商家生成结算单 |
 | 结算对账 | 每日 | 校验 `Σ settlement_items` 与已完成子单一致，差异告警 |

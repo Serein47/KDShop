@@ -45,14 +45,16 @@ class OrderMaintenanceServiceTest {
     @Mock private TransactionTemplate tx;
     @Mock private TransactionStatus txStatus;
     @Mock private UserMapper userMapper;
+    @Mock private com.kdshop.payment.mapper.PaymentMapper paymentMapper;
 
     private OrderMaintenanceService service;
-    private final MetaProperties meta = new MetaProperties("CNY", "Asia/Shanghai", 9900, 1000, 15, 7, 7, 24);
+    private final MetaProperties meta = new MetaProperties("CNY", "Asia/Shanghai", 9900, 1000, 15, 7, 7, 24, 3, 7);
 
     @BeforeEach
     void setUp() {
         service = new OrderMaintenanceService(orderMapper, merchantOrderMapper, orderItemMapper, skuMapper,
-                userCouponMapper, statusLogMapper, emailOutboxMapper, meta, tx, new ObjectMapper(), userMapper);
+                userCouponMapper, statusLogMapper, emailOutboxMapper, meta, tx, new ObjectMapper(), userMapper,
+                paymentMapper);
         lenient().when(tx.execute(any())).thenAnswer(invocation -> {
             TransactionCallback<?> callback = invocation.getArgument(0);
             return callback.doInTransaction(txStatus);
@@ -120,6 +122,51 @@ class OrderMaintenanceServiceTest {
 
         assertThat(service.cancelExpiredOrders()).isEqualTo(1);
         verify(emailOutboxMapper).insert(any(EmailOutbox.class));
+    }
+
+    @Test
+    void balanceNotificationIsWrittenOnce() {
+        Order order = new Order();
+        order.setId(20L);
+        order.setOrderNo("KD202611160002");
+        order.setUserId(1L);
+        order.setStatus("PRODUCING");
+        order.setOrderType("CUSTOM");
+        order.setBalanceCent(11800);
+        order.setPromisedShipAt(LocalDateTime.now().plusDays(2));
+        when(orderMapper.selectList(any())).thenReturn(List.of(order));
+        when(orderMapper.update(any(), any())).thenReturn(1);
+
+        assertThat(service.notifyBalanceDue()).isEqualTo(1);
+
+        org.mockito.ArgumentCaptor<EmailOutbox> outbox = org.mockito.ArgumentCaptor.forClass(EmailOutbox.class);
+        verify(emailOutboxMapper).insert(outbox.capture());
+        assertThat(outbox.getValue().getTemplate()).isEqualTo("ORDER_BALANCE_DUE");
+        assertThat(outbox.getValue().getBizKey()).isEqualTo("order_balance_due:KD202611160002");
+    }
+
+    @Test
+    void overdueBalanceClosesOrderWithoutRestock() {
+        Order order = new Order();
+        order.setId(21L);
+        order.setOrderNo("KD202611010003");
+        order.setUserId(1L);
+        order.setStatus("PRODUCING");
+        order.setOrderType("PREORDER");
+        order.setBalanceCent(5000);
+        order.setBalanceDueAt(LocalDateTime.now().minusDays(1));
+        when(orderMapper.selectList(any())).thenReturn(List.of(order));
+        when(orderMapper.update(any(), any())).thenReturn(1);
+
+        assertThat(service.closeOverdueBalance()).isEqualTo(1);
+
+        verify(skuMapper, org.mockito.Mockito.never()).unlockStock(any(), any(Integer.class).intValue());
+        verify(userCouponMapper, org.mockito.Mockito.never()).update(any(), any());
+
+        org.mockito.ArgumentCaptor<com.kdshop.order.entity.OrderStatusLog> log =
+                org.mockito.ArgumentCaptor.forClass(com.kdshop.order.entity.OrderStatusLog.class);
+        verify(statusLogMapper, org.mockito.Mockito.atLeastOnce()).insert(log.capture());
+        assertThat(log.getValue().getReason()).isEqualTo("BALANCE_OVERDUE");
     }
 
     @Test

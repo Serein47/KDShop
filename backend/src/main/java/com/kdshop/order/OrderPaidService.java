@@ -74,8 +74,8 @@ public class OrderPaidService {
         String purpose = payment.getPurpose() == null ? "FULL" : payment.getPurpose();
         return switch (purpose) {
             case "DEPOSIT" -> markDepositPaid(order, payment);
-            case "BALANCE" -> markFullyPaid(order, payment, "PRODUCING", "PAID", "PENDING_SHIPMENT", false);
-            default -> markFullyPaid(order, payment, "PENDING_PAYMENT", "PAID", "PENDING_SHIPMENT", true);
+            case "BALANCE" -> markFullyPaid(order, payment, "PRODUCING", "PAID", "PENDING_SHIPMENT", false, true);
+            default -> markFullyPaid(order, payment, "PENDING_PAYMENT", "PAID", "PENDING_SHIPMENT", true, false);
         };
     }
 
@@ -129,16 +129,21 @@ public class OrderPaidService {
     }
 
     private boolean markFullyPaid(Order order, Payment payment, String fromStatus, String toOrderStatus,
-                                  String toSubStatus, boolean deductStock) {
+                                  String toSubStatus, boolean deductStock, boolean balancePayment) {
         if (!fromStatus.equals(order.getStatus())) {
             return false;
         }
         LocalDateTime now = LocalDateTime.now();
-        int updated = orderMapper.update(null, new LambdaUpdateWrapper<Order>()
+        LambdaUpdateWrapper<Order> update = new LambdaUpdateWrapper<Order>()
                 .eq(Order::getId, order.getId())
                 .eq(Order::getStatus, fromStatus)
-                .set(Order::getStatus, toOrderStatus)
-                .set(Order::getPaidAt, now));
+                .set(Order::getStatus, toOrderStatus);
+        if (balancePayment) {
+            update.set(Order::getBalancePaidAt, now);
+        } else {
+            update.set(Order::getPaidAt, now);
+        }
+        int updated = orderMapper.update(null, update);
         if (updated == 0) {
             return false;
         }

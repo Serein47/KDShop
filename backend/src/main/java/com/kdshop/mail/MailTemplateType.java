@@ -12,6 +12,7 @@ public enum MailTemplateType {
     PAYMENT_SUCCESS("支付成功，订单 {{orderNo}} 正在备货"),
     ORDER_SHIPPED("你的订单 {{orderNo}} 已发货"),
     ORDER_CANCELLED("订单 {{orderNo}} 已取消"),
+    ORDER_BALANCE_DUE("订单 {{orderNo}} 尾款待支付，请在 {{dueAt}} 前付清"),
     REFUND_RESULT("退款单 {{refundNo}} 已处理");
 
     private final String subject;

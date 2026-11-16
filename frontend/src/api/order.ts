@@ -100,6 +100,8 @@ export interface OrderDetail {
   deposit: number
   /** 尾款，分；普通订单为 0 */
   balance: number
+  /** 尾款支付截止时间；仅制作中的预售/定制订单有值 */
+  balanceDueAt?: string | null
   address?: OrderAddress | null
   remark?: string | null
   createdAt: string

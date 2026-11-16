@@ -156,6 +156,42 @@ class OrderPaidServiceTest {
         assertThat(payload.getValue().get("paymentLabel")).isEqualTo("（定金）");
     }
 
+    @Test
+    void balancePaymentMovesProducingOrderToPaidWithoutDeductingStockAgain() {
+        Order order = new Order();
+        order.setId(3L);
+        order.setOrderNo("KD202611160003");
+        order.setUserId(1L);
+        order.setStatus("PRODUCING");
+        order.setOrderType("CUSTOM");
+        order.setPayAmountCent(16800);
+        order.setDepositCent(5000);
+        order.setBalanceCent(11800);
+        when(orderMapper.selectById(3L)).thenReturn(order);
+        when(orderMapper.update(any(), any())).thenReturn(1);
+        when(orderItemMapper.selectList(any())).thenReturn(List.of());
+
+        assertThat(service.markPaid(payment(3L, "PAY3", 11800, "BALANCE"))).isTrue();
+
+        verify(skuMapper, never()).deductStock(any(), any(Integer.class));
+
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<LambdaUpdateWrapper<Order>> orderUpdate = ArgumentCaptor.forClass(LambdaUpdateWrapper.class);
+        verify(orderMapper).update(any(), orderUpdate.capture());
+        assertThat(orderUpdate.getValue().getSqlSet()).contains("balance_paid_at");
+
+        ArgumentCaptor<OrderStatusLog> log = ArgumentCaptor.forClass(OrderStatusLog.class);
+        verify(statusLogMapper).insert(log.capture());
+        assertThat(log.getValue().getToStatus()).isEqualTo("PAID");
+
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<Map<String, Object>> payload = ArgumentCaptor.forClass(Map.class);
+        verify(mailOutboxWriter).enqueueToUser(eq(1L), eq(MailTemplateType.PAYMENT_SUCCESS),
+                eq("payment_success:PAY3"), payload.capture());
+        assertThat(payload.getValue().get("paidAmount")).isEqualTo("118.00");
+        assertThat(payload.getValue().get("paymentLabel")).isEqualTo("（尾款）");
+    }
+
     private Payment payment(Long orderId, String no, int amount, String purpose) {
         Payment payment = new Payment();
         payment.setId(1L);

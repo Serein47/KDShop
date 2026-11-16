@@ -138,6 +138,7 @@ public class OrderQueryService {
                 order.getOrderType() == null ? "NORMAL" : order.getOrderType(),
                 order.getDepositCent() == null ? 0 : order.getDepositCent(),
                 order.getBalanceCent() == null ? 0 : order.getBalanceCent(),
+                order.getBalanceDueAt(),
                 readAddress(order.getAddressJson()),
                 order.getRemark(),
                 order.getCreatedAt(),
@@ -194,6 +195,9 @@ public class OrderQueryService {
     }
 
     private LocalDateTime expireAt(Order order) {
+        if ("PRODUCING".equals(order.getStatus())) {
+            return order.getBalanceDueAt();
+        }
         if (!"PENDING_PAYMENT".equals(order.getStatus()) || order.getCreatedAt() == null) {
             return null;
         }

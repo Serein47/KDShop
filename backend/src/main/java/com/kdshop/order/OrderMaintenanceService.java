@@ -19,13 +19,17 @@ import com.kdshop.order.mapper.MerchantOrderMapper;
 import com.kdshop.order.mapper.OrderItemMapper;
 import com.kdshop.order.mapper.OrderMapper;
 import com.kdshop.order.mapper.OrderStatusLogMapper;
+import com.kdshop.payment.entity.Payment;
+import com.kdshop.payment.mapper.PaymentMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionTemplate;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
 
@@ -37,6 +41,7 @@ import java.util.Map;
 public class OrderMaintenanceService {
 
     private static final Logger log = LoggerFactory.getLogger(OrderMaintenanceService.class);
+    private static final DateTimeFormatter MAIL_TIME = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
 
     private final OrderMapper orderMapper;
     private final MerchantOrderMapper merchantOrderMapper;
@@ -49,12 +54,14 @@ public class OrderMaintenanceService {
     private final TransactionTemplate tx;
     private final ObjectMapper objectMapper;
     private final UserMapper userMapper;
+    private final PaymentMapper paymentMapper;
 
     public OrderMaintenanceService(OrderMapper orderMapper, MerchantOrderMapper merchantOrderMapper,
                                    OrderItemMapper orderItemMapper, SkuMapper skuMapper,
                                    UserCouponMapper userCouponMapper, OrderStatusLogMapper statusLogMapper,
                                    EmailOutboxMapper emailOutboxMapper, MetaProperties meta,
-                                   TransactionTemplate tx, ObjectMapper objectMapper, UserMapper userMapper) {
+                                   TransactionTemplate tx, ObjectMapper objectMapper, UserMapper userMapper,
+                                   PaymentMapper paymentMapper) {
         this.orderMapper = orderMapper;
         this.merchantOrderMapper = merchantOrderMapper;
         this.orderItemMapper = orderItemMapper;
@@ -66,14 +73,18 @@ public class OrderMaintenanceService {
         this.tx = tx;
         this.objectMapper = objectMapper;
         this.userMapper = userMapper;
+        this.paymentMapper = paymentMapper;
     }
 
     @Scheduled(fixedDelayString = "${kdshop.jobs.scan-interval-ms:60000}", initialDelay = 20000)
     public void scan() {
         int cancelled = cancelExpiredOrders();
         int confirmed = autoConfirmShipped();
-        if (cancelled > 0 || confirmed > 0) {
-            log.info("order maintenance: cancelled={}, autoConfirmed={}", cancelled, confirmed);
+        int notified = notifyBalanceDue();
+        int closed = closeOverdueBalance();
+        if (cancelled > 0 || confirmed > 0 || notified > 0 || closed > 0) {
+            log.info("order maintenance: cancelled={}, autoConfirmed={}, balanceNotified={}, balanceClosed={}",
+                    cancelled, confirmed, notified, closed);
         }
     }
 
@@ -103,6 +114,144 @@ public class OrderMaintenanceService {
         return preorder
                 ? order.getCreatedAt().plusHours(meta.preorderPayTimeoutHours())
                 : order.getCreatedAt().plusMinutes(meta.payTimeoutMinutes());
+    }
+
+    /** 承诺发货前 N 天提醒付尾款；同一订单只提醒一次。 */
+    public int notifyBalanceDue() {
+        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime threshold = now.plusDays(meta.balanceNotifyDaysBefore());
+        List<Order> candidates = orderMapper.selectList(new LambdaQueryWrapper<Order>()
+                .eq(Order::getStatus, "PRODUCING")
+                .isNull(Order::getBalanceNotifiedAt)
+                .le(Order::getPromisedShipAt, threshold)
+                .last("LIMIT 50"));
+        int count = 0;
+        for (Order order : candidates) {
+            if (order.getPromisedShipAt() == null
+                    || order.getPromisedShipAt().isAfter(threshold)
+                    || order.getBalanceCent() == null
+                    || order.getBalanceCent() <= 0) {
+                continue;
+            }
+            Integer done = tx.execute(status -> notifyBalanceOne(order));
+            if (done != null && done > 0) {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    private Integer notifyBalanceOne(Order order) {
+        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime dueAt = now.plusDays(meta.balancePayDays());
+        int updated = orderMapper.update(null, new LambdaUpdateWrapper<Order>()
+                .eq(Order::getId, order.getId())
+                .eq(Order::getStatus, "PRODUCING")
+                .isNull(Order::getBalanceNotifiedAt)
+                .set(Order::getBalanceNotifiedAt, now)
+                .set(Order::getBalanceDueAt, dueAt));
+        if (updated == 0) {
+            return 0;
+        }
+
+        OrderStatusLog logRow = new OrderStatusLog();
+        logRow.setScope("ORDER");
+        logRow.setOrderId(order.getId());
+        logRow.setFromStatus("PRODUCING");
+        logRow.setToStatus("PRODUCING");
+        logRow.setOperatorType("SYSTEM");
+        logRow.setReason("BALANCE_NOTIFIED");
+        statusLogMapper.insert(logRow);
+
+        EmailOutbox outbox = new EmailOutbox();
+        User user = userMapper.selectById(order.getUserId());
+        outbox.setToEmail(user == null ? "unknown@kdshop.local" : user.getEmail());
+        outbox.setTemplate("ORDER_BALANCE_DUE");
+        outbox.setBizKey("order_balance_due:" + order.getOrderNo());
+        outbox.setStatus("PENDING");
+        try {
+            outbox.setPayloadJson(objectMapper.writeValueAsString(Map.of(
+                    "orderNo", order.getOrderNo(),
+                    "balance", BigDecimal.valueOf(order.getBalanceCent(), 2).toPlainString(),
+                    "dueAt", dueAt.format(MAIL_TIME),
+                    "payUrl", "/orders/" + order.getOrderNo())));
+        } catch (Exception e) {
+            outbox.setPayloadJson("{}");
+        }
+        emailOutboxMapper.insert(outbox);
+        return 1;
+    }
+
+    /** 尾款逾期：关闭订单，定金不退、库存不回补、优惠券不退还。 */
+    public int closeOverdueBalance() {
+        LocalDateTime now = LocalDateTime.now();
+        List<Order> candidates = orderMapper.selectList(new LambdaQueryWrapper<Order>()
+                .eq(Order::getStatus, "PRODUCING")
+                .isNotNull(Order::getBalanceDueAt)
+                .lt(Order::getBalanceDueAt, now)
+                .last("LIMIT 50"));
+        int count = 0;
+        for (Order order : candidates) {
+            if (order.getBalanceDueAt() == null || now.isBefore(order.getBalanceDueAt())) {
+                continue;
+            }
+            Boolean done = tx.execute(status -> closeOverdueOne(order));
+            if (Boolean.TRUE.equals(done)) {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    private boolean closeOverdueOne(Order order) {
+        LocalDateTime now = LocalDateTime.now();
+        int updated = orderMapper.update(null, new LambdaUpdateWrapper<Order>()
+                .eq(Order::getId, order.getId())
+                .eq(Order::getStatus, "PRODUCING")
+                .lt(Order::getBalanceDueAt, now)
+                .set(Order::getStatus, "CANCELLED")
+                .set(Order::getCancelledAt, now)
+                .set(Order::getCancelReason, "BALANCE_OVERDUE"));
+        if (updated == 0) {
+            return false;
+        }
+
+        merchantOrderMapper.update(null, new LambdaUpdateWrapper<MerchantOrder>()
+                .eq(MerchantOrder::getOrderId, order.getId())
+                .eq(MerchantOrder::getStatus, "PRODUCING")
+                .set(MerchantOrder::getStatus, "CANCELLED"));
+
+        paymentMapper.update(null, new LambdaUpdateWrapper<Payment>()
+                .eq(Payment::getOrderId, order.getId())
+                .eq(Payment::getStatus, "PENDING")
+                .set(Payment::getStatus, "CLOSED"));
+
+        OrderStatusLog logRow = new OrderStatusLog();
+        logRow.setScope("ORDER");
+        logRow.setOrderId(order.getId());
+        logRow.setFromStatus("PRODUCING");
+        logRow.setToStatus("CANCELLED");
+        logRow.setOperatorType("SYSTEM");
+        logRow.setReason("BALANCE_OVERDUE");
+        statusLogMapper.insert(logRow);
+
+        EmailOutbox outbox = new EmailOutbox();
+        User user = userMapper.selectById(order.getUserId());
+        outbox.setToEmail(user == null ? "unknown@kdshop.local" : user.getEmail());
+        outbox.setTemplate("ORDER_CANCELLED");
+        outbox.setBizKey("order_cancelled:" + order.getOrderNo());
+        outbox.setStatus("PENDING");
+        try {
+            outbox.setPayloadJson(objectMapper.writeValueAsString(Map.of(
+                    "orderNo", order.getOrderNo(),
+                    "reason", "尾款逾期未付，定金不予退还",
+                    "cancelledAt", now.toString(),
+                    "orderUrl", "/orders/" + order.getOrderNo())));
+        } catch (Exception e) {
+            outbox.setPayloadJson("{}");
+        }
+        emailOutboxMapper.insert(outbox);
+        return true;
     }
 
     private boolean cancelOne(Order order) {

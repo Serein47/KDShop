@@ -26,3 +26,6 @@ scripts/media/resolved.json
 
 # 本地 worktree 目录
 .worktrees/
+
+# 临时 PR 描述
+.pr-body-*.md

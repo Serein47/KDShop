@@ -44,6 +44,7 @@ const reviewContent = ref('')
 const orderNo = computed(() => String(route.params.orderNo ?? ''))
 const isPreorder = computed(() => !!order.value && order.value.orderType !== 'NORMAL')
 const canPay = computed(() => !!order.value && isPayable(order.value.status))
+const canPayBalance = computed(() => !!order.value && order.value.status === 'PRODUCING' && order.value.balance > 0)
 const canCancel = computed(() => !!order.value && isCancellable(order.value.status))
 const payLabel = computed(() => {
   if (!order.value) return '去支付'
@@ -230,6 +231,7 @@ function actorLabel(actor: string): string {
             {{ orderStatusLabel(order.status) }}
           </span>
           <button v-if="canPay" class="btn btn--solid" :disabled="busy" @click="pay">{{ payLabel }}</button>
+          <button v-if="canPayBalance" class="btn btn--solid" :disabled="busy" @click="pay">支付尾款</button>
           <button v-if="canCancel" class="btn btn--ghost" :disabled="busy" @click="cancel">
             取消订单
           </button>
@@ -349,6 +351,9 @@ function actorLabel(actor: string): string {
               <template v-if="isPreorder">
                 <div><dt>定金</dt><dd>¥{{ yuan(order.deposit) }}</dd></div>
                 <div class="total"><dt>尾款</dt><dd>¥{{ yuan(order.balance) }}</dd></div>
+                <div v-if="order.balanceDueAt" class="due">
+                  <dt>尾款截止</dt><dd>{{ formatDateTime(order.balanceDueAt) }}</dd>
+                </div>
               </template>
             </dl>
           </section>
@@ -483,6 +488,7 @@ function actorLabel(actor: string): string {
 .money .minus { color: var(--rust); }
 .money .total { border-top: 1px solid var(--line); padding-top: 11px; margin-top: 2px; color: var(--ink); }
 .money .total dd { font-size: 20px; font-weight: 600; }
+.money .due dd { color: var(--rust); }
 
 .meta { display: grid; gap: 7px; font-size: 12px; }
 .meta p { display: flex; gap: 10px; margin: 0; color: var(--ink-soft); }
