@@ -33,6 +33,54 @@ function statusLabel(value: string) {
   return labels[value] ?? value
 }
 
+function escapeHtml(value: string) {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+}
+
+/** 打印包裹单：含商品、定制项、收货信息与贺卡内容。 */
+function printPackingSlip(sub: MerchantSubOrder) {
+  const rows = sub.items.map((item) => {
+    const options = item.options?.length
+      ? `<br><small>${escapeHtml(item.options.map((o) => `${o.name}：${o.value}`).join(' · '))}</small>`
+      : ''
+    return `<tr><td>${escapeHtml(item.name)}${options}</td><td>×${item.quantity}</td>`
+      + `<td>¥${(item.subtotal / 100).toFixed(2)}</td></tr>`
+  }).join('')
+  const gift = sub.isGift
+    ? `<p><strong>礼物包装：</strong>${sub.giftWrap ? '是' : '否'}</p>`
+      + (sub.giftMessage ? `<p><strong>贺卡：</strong>${escapeHtml(sub.giftMessage)}</p>` : '')
+    : ''
+  const html = `<!doctype html><html lang="zh-CN"><head><meta charset="utf-8">
+    <title>包裹单 ${escapeHtml(sub.subOrderNo)}</title>
+    <style>
+      body { font-family: -apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif; padding: 24px; color: #191512; }
+      h1 { font-size: 20px; margin: 0 0 16px; }
+      table { width: 100%; border-collapse: collapse; margin: 12px 0; }
+      th, td { border-bottom: 1px solid #ddd; padding: 8px; text-align: left; font-size: 13px; vertical-align: top; }
+      small { color: #8a7d6c; }
+    </style></head><body>
+    <h1>KDShop 包裹单</h1>
+    <p>子单：${escapeHtml(sub.subOrderNo)} · 订单：${escapeHtml(sub.orderNo)}</p>
+    <p>收货：${escapeHtml(sub.receiver ?? '')} ${escapeHtml(sub.phone ?? '')}<br>${escapeHtml(sub.address ?? '')}</p>
+    ${gift}
+    <table><thead><tr><th>商品</th><th>数量</th><th>小计</th></tr></thead><tbody>${rows}</tbody></table>
+    <p>打印时间：${new Date().toLocaleString('zh-CN')}</p>
+    </body></html>`
+  const win = window.open('', '_blank', 'width=720,height=900')
+  if (!win) {
+    ElMessage.warning('请允许弹出窗口后再打印')
+    return
+  }
+  win.document.write(html)
+  win.document.close()
+  win.focus()
+  win.print()
+}
+
 async function load() {
   loading.value = true
   try {
@@ -117,9 +165,15 @@ async function submitShip() {
           <span>实付 ¥{{ yuan(sub.payAmount) }}</span>
         </div>
 
+        <div v-if="sub.isGift" class="gift">
+          <span>礼物包装：{{ sub.giftWrap ? '是' : '否' }}</span>
+          <span v-if="sub.giftMessage">贺卡：{{ sub.giftMessage }}</span>
+        </div>
+
         <div class="actions">
           <button v-if="sub.status === 'PENDING_SHIPMENT'" class="btn btn--solid" @click="openShip(sub)">发货</button>
           <span v-else-if="sub.status === 'SHIPPED'" class="muted">{{ sub.carrier }} · {{ sub.trackingNo }}</span>
+          <button class="btn btn--ghost" @click="printPackingSlip(sub)">打印包裹单</button>
         </div>
       </article>
     </div>
@@ -163,7 +217,13 @@ h1 { font-size: 34px; margin: 6px 0 20px; }
 .item__info span { font-size: 12px; color: var(--muted); }
 .item__options { display: block; color: var(--rust) !important; font-size: 11px; }
 .meta { display: flex; gap: 18px; flex-wrap: wrap; font-size: 12px; color: var(--muted); padding: 10px 0 4px; }
-.actions { padding-top: 10px; }
+.gift {
+  display: flex; gap: 18px; flex-wrap: wrap;
+  margin-top: 6px; padding: 8px 10px;
+  background: var(--rust-soft); border-radius: 8px;
+  font-size: 12px; color: var(--rust);
+}
+.actions { padding-top: 10px; display: flex; gap: 8px; align-items: center; }
 .dialog { display: grid; gap: 14px; }
 label { display: grid; gap: 6px; font-size: 13px; color: var(--muted); }
 select, input { padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; font-size: 14px; }

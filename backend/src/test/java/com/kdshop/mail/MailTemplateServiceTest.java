@@ -61,6 +61,7 @@ class MailTemplateServiceTest {
                         "carrier", "顺丰",
                         "trackingNo", "SF1234567890",
                         "shippedAt", "2026-11-04 09:00",
+                        "giftNote", "",
                         "orderUrl", "http://localhost:5173/orders/KD202611030001")));
         assertThat(shipped.html()).contains("顺丰").contains("SF1234567890");
         assertThat(shipped.text()).contains("运单号：SF1234567890");

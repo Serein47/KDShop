@@ -30,6 +30,8 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -168,12 +170,14 @@ public class MerchantOrderService {
         outbox.setBizKey("order_shipped:" + sub.getSubOrderNo());
         outbox.setStatus("PENDING");
         try {
-            outbox.setPayloadJson(objectMapper.writeValueAsString(Map.of(
-                    "orderNo", order.getOrderNo(),
-                    "carrier", request.carrier(),
-                    "trackingNo", request.trackingNo(),
-                    "shippedAt", now.toString(),
-                    "orderUrl", "/orders/" + order.getOrderNo())));
+            Map<String, Object> payload = new LinkedHashMap<>();
+            payload.put("orderNo", order.getOrderNo());
+            payload.put("carrier", request.carrier());
+            payload.put("trackingNo", request.trackingNo());
+            payload.put("shippedAt", now.toString());
+            payload.put("orderUrl", "/orders/" + order.getOrderNo());
+            payload.put("giftNote", giftNote(order));
+            outbox.setPayloadJson(objectMapper.writeValueAsString(payload));
         } catch (Exception e) {
             outbox.setPayloadJson("{}");
         }
@@ -187,9 +191,27 @@ public class MerchantOrderService {
                 sub.getPayAmountCent(), sub.getCreatedAt(), sub.getShippedAt(), sub.getCarrier(), sub.getTrackingNo(),
                 order == null ? null : receiver(order), order == null ? null : phone(order),
                 order == null ? null : address(order),
+                order != null && order.getIsGift() != null && order.getIsGift() == 1,
+                order == null ? null : order.getGiftMessage(),
+                order != null && order.getGiftWrap() != null && order.getGiftWrap() == 1,
                 items.stream().map(i -> new SubOrderView.Item(i.getProductName(), readMap(i.getSkuSpec()),
                         i.getUnitPriceCent(), i.getQuantity(), i.getSubtotalCent(), i.getProductImage(),
                         optionsOf(i.getId()))).toList());
+    }
+
+    /** 发货邮件里的礼物提示；非礼物订单返回空串（模板占位始终存在）。 */
+    private String giftNote(Order order) {
+        if (order == null || order.getIsGift() == null || order.getIsGift() != 1) {
+            return "";
+        }
+        List<String> parts = new ArrayList<>();
+        if (order.getGiftWrap() != null && order.getGiftWrap() == 1) {
+            parts.add("礼物包装");
+        }
+        if (StringUtils.hasText(order.getGiftMessage())) {
+            parts.add("贺卡：" + order.getGiftMessage());
+        }
+        return parts.isEmpty() ? "" : "这是一份礼物 · " + String.join("；", parts);
     }
 
     private List<SubOrderView.ItemOption> optionsOf(Long orderItemId) {

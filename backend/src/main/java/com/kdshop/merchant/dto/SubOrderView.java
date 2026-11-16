@@ -19,6 +19,9 @@ public record SubOrderView(
         String receiver,
         String phone,
         String address,
+        boolean isGift,
+        String giftMessage,
+        boolean giftWrap,
         List<Item> items
 ) {
     public record Item(String name, Map<String, String> spec, int price, int quantity, int subtotal,

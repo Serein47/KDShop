@@ -108,6 +108,9 @@ export interface OrderDetail {
   balance: number
   /** 尾款支付截止时间；仅制作中的预售/定制订单有值 */
   balanceDueAt?: string | null
+  isGift: boolean
+  giftMessage?: string | null
+  giftWrap: boolean
   address?: OrderAddress | null
   remark?: string | null
   createdAt: string
