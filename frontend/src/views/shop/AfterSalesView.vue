@@ -143,6 +143,16 @@ async function submitReturnForm() {
           </a>
         </div>
 
+        <div v-if="active.items?.length" class="items">
+          <p v-for="(item, index) in active.items" :key="index" class="item">
+            <strong>{{ item.name }}</strong> × {{ item.quantity }}
+            <span v-if="item.options.length">
+              · {{ item.options.map((o) => `${o.name}：${o.value}`).join(' · ') }}
+            </span>
+            <span v-if="item.flawAck"> · 已确认手工痕迹</span>
+          </p>
+        </div>
+
         <p v-if="active.rejectReason" class="reject">驳回原因：{{ active.rejectReason }}</p>
         <p v-if="active.returnTrackingNo" class="meta">
           寄回：{{ active.returnCarrier }} · {{ active.returnTrackingNo }}
@@ -243,6 +253,9 @@ h1 { font-size: 34px; margin: 6px 0 0; }
 .timeline strong { display: block; font-size: 13px; }
 .timeline span { font-size: 12px; color: var(--muted); }
 .actions { margin-top: 8px; }
+.items { margin: 10px 0 12px; display: grid; gap: 4px; }
+.item { margin: 0; font-size: 13px; color: var(--ink-soft); }
+.item span { color: var(--rust); font-size: 12px; }
 .return-form { display: grid; gap: 12px; }
 .return-form label { display: grid; gap: 6px; font-size: 13px; color: var(--muted); }
 .return-form select, .return-form input {

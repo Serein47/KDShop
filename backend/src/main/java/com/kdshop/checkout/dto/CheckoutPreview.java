@@ -30,8 +30,13 @@ public record CheckoutPreview(
             int quantity,
             int subtotal,
             boolean requiresFlawAck,
-            String flawNote
+            String flawNote,
+            List<OptionSelection> options
     ) {
+    }
+
+    /** 定制项快照：选项定义 + 用户填写/选择的值 + 当时加价。 */
+    public record OptionSelection(Long optionId, String name, String value, int priceDelta) {
     }
 
     /**

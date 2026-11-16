@@ -21,6 +21,13 @@ export interface AddressPayload {
   isDefault?: boolean
 }
 
+export interface PreviewOption {
+  optionId: number
+  name: string
+  value: string
+  priceDelta: number
+}
+
 export interface PreviewLine {
   skuId: number
   productId: number
@@ -31,6 +38,7 @@ export interface PreviewLine {
   subtotal: number
   requiresFlawAck: boolean
   flawNote?: string | null
+  options: PreviewOption[]
 }
 
 export interface PreviewSubOrder {
@@ -76,7 +84,11 @@ export interface CheckoutPreview {
   address: { receiver: string; phone: string; province: string; city: string; district: string; detail: string } | null
 }
 
-export async function fetchPreview(payload: { addressId?: number; couponId?: number; items?: { skuId: number; quantity: number }[] }): Promise<CheckoutPreview> {
+export async function fetchPreview(payload: {
+  addressId?: number
+  couponId?: number
+  items?: { skuId: number; quantity: number; options?: { optionId: number; value: string }[] }[]
+}): Promise<CheckoutPreview> {
   const { data } = await http.post<ApiResponse<CheckoutPreview>>('/checkout/preview', payload)
   return data.data
 }

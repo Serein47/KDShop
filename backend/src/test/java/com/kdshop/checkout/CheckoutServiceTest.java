@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.kdshop.address.mapper.AddressMapper;
 import com.kdshop.cart.mapper.CartItemMapper;
 import com.kdshop.catalog.entity.Product;
+import com.kdshop.catalog.entity.ProductOption;
 import com.kdshop.catalog.entity.Shop;
 import com.kdshop.catalog.entity.Sku;
 import com.kdshop.catalog.mapper.ProductMapper;
@@ -38,6 +39,7 @@ class CheckoutServiceTest {
     @Mock private CartItemMapper cartItemMapper;
     @Mock private SkuMapper skuMapper;
     @Mock private ProductMapper productMapper;
+    @Mock private com.kdshop.catalog.mapper.ProductOptionMapper productOptionMapper;
     @Mock private ShopMapper shopMapper;
     @Mock private AddressMapper addressMapper;
     @Mock private CouponMapper couponMapper;
@@ -49,8 +51,8 @@ class CheckoutServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new CheckoutService(cartItemMapper, skuMapper, productMapper, shopMapper,
-                addressMapper, couponMapper, userCouponMapper, meta, new ObjectMapper());
+        service = new CheckoutService(cartItemMapper, skuMapper, productMapper, productOptionMapper,
+                shopMapper, addressMapper, couponMapper, userCouponMapper, meta, new ObjectMapper());
         SecurityContextHolder.getContext().setAuthentication(
                 UsernamePasswordAuthenticationToken.authenticated(1L, null, List.of()));
     }
@@ -67,7 +69,7 @@ class CheckoutServiceTest {
         when(shopMapper.selectById(1L)).thenReturn(shop(1L, "甲店"));
 
         CheckoutPreview preview = service.preview(new CheckoutRequest(null, null,
-                List.of(new CheckoutRequest.Item(10L, 1))));
+                List.of(new CheckoutRequest.Item(10L, 1, null))));
 
         assertThat(preview.subOrders()).hasSize(1);
         assertThat(preview.summary().goodsAmount()).isEqualTo(5000);
@@ -82,7 +84,7 @@ class CheckoutServiceTest {
         when(shopMapper.selectById(1L)).thenReturn(shop(1L, "甲店"));
 
         CheckoutPreview preview = service.preview(new CheckoutRequest(null, null,
-                List.of(new CheckoutRequest.Item(10L, 1))));
+                List.of(new CheckoutRequest.Item(10L, 1, null))));
 
         assertThat(preview.summary().shippingFee()).isZero();
         assertThat(preview.summary().payAmount()).isEqualTo(9900);
@@ -95,7 +97,7 @@ class CheckoutServiceTest {
         when(shopMapper.selectById(1L)).thenReturn(shop(1L, "甲店"));
 
         assertThatThrownBy(() -> service.preview(new CheckoutRequest(null, null,
-                List.of(new CheckoutRequest.Item(10L, 3)))))
+                List.of(new CheckoutRequest.Item(10L, 3, null)))))
                 .isInstanceOf(BusinessException.class)
                 .extracting(e -> ((BusinessException) e).errorCode())
                 .isEqualTo(ErrorCode.STOCK_INSUFFICIENT);
@@ -111,7 +113,7 @@ class CheckoutServiceTest {
         when(shopMapper.selectById(2L)).thenReturn(shop(2L, "乙店"));
 
         CheckoutPreview preview = service.preview(new CheckoutRequest(null, null,
-                List.of(new CheckoutRequest.Item(10L, 1), new CheckoutRequest.Item(11L, 1))));
+                List.of(new CheckoutRequest.Item(10L, 1, null), new CheckoutRequest.Item(11L, 1, null))));
 
         assertThat(preview.subOrders()).hasSize(2);
         assertThat(preview.summary().goodsAmount()).isEqualTo(11000);
@@ -131,7 +133,7 @@ class CheckoutServiceTest {
         when(shopMapper.selectById(1L)).thenReturn(shop(1L, "甲店"));
 
         CheckoutPreview preview = service.preview(new CheckoutRequest(null, null,
-                List.of(new CheckoutRequest.Item(10L, 1))));
+                List.of(new CheckoutRequest.Item(10L, 1, null))));
 
         assertThat(preview.summary().orderType()).isEqualTo("CUSTOM");
         assertThat(preview.summary().deposit()).isEqualTo(2970);
@@ -154,10 +156,86 @@ class CheckoutServiceTest {
         when(shopMapper.selectById(2L)).thenReturn(shop(2L, "乙店"));
 
         assertThatThrownBy(() -> service.preview(new CheckoutRequest(null, null,
-                List.of(new CheckoutRequest.Item(10L, 1), new CheckoutRequest.Item(11L, 1)))))
+                List.of(new CheckoutRequest.Item(10L, 1, null), new CheckoutRequest.Item(11L, 1, null)))))
                 .isInstanceOf(BusinessException.class)
                 .extracting(e -> ((BusinessException) e).errorCode())
                 .isEqualTo(ErrorCode.PARAM_INVALID);
+    }
+
+    @Test
+    void optionDeltaIsIncludedInLinePriceAndSubtotal() {
+        when(skuMapper.selectById(10L)).thenReturn(sku(10L, 100L, 5000, 10));
+        when(productMapper.selectById(100L)).thenReturn(product(100L, 1L, "刻字木盒"));
+        when(shopMapper.selectById(1L)).thenReturn(shop(1L, "甲店"));
+        when(productOptionMapper.selectList(any())).thenReturn(List.of(textOption(100L, 1L, 1000)));
+
+        CheckoutPreview preview = service.preview(new CheckoutRequest(null, null,
+                List.of(new CheckoutRequest.Item(10L, 1,
+                        List.of(new CheckoutRequest.OptionValue(100L, "小明"))))));
+
+        var line = preview.subOrders().get(0).items().get(0);
+        assertThat(line.price()).isEqualTo(6000);
+        assertThat(line.subtotal()).isEqualTo(6000);
+        assertThat(line.options()).hasSize(1);
+        assertThat(line.options().get(0).name()).isEqualTo("刻字");
+        assertThat(preview.summary().goodsAmount()).isEqualTo(6000);
+    }
+
+    @Test
+    void requiredOptionMissingIsRejected() {
+        when(skuMapper.selectById(10L)).thenReturn(sku(10L, 100L, 5000, 10));
+        when(productMapper.selectById(100L)).thenReturn(product(100L, 1L, "刻字木盒"));
+        when(shopMapper.selectById(1L)).thenReturn(shop(1L, "甲店"));
+        when(productOptionMapper.selectList(any())).thenReturn(List.of(textOption(100L, 1L, 1000)));
+
+        assertThatThrownBy(() -> service.preview(new CheckoutRequest(null, null,
+                List.of(new CheckoutRequest.Item(10L, 1, null)))))
+                .isInstanceOf(BusinessException.class)
+                .extracting(e -> ((BusinessException) e).errorCode())
+                .isEqualTo(ErrorCode.PARAM_INVALID);
+    }
+
+    @Test
+    void unknownOptionIsRejected() {
+        when(skuMapper.selectById(10L)).thenReturn(sku(10L, 100L, 5000, 10));
+        when(productMapper.selectById(100L)).thenReturn(product(100L, 1L, "刻字木盒"));
+        when(shopMapper.selectById(1L)).thenReturn(shop(1L, "甲店"));
+        when(productOptionMapper.selectList(any())).thenReturn(List.of(textOption(100L, 1L, 1000)));
+
+        assertThatThrownBy(() -> service.preview(new CheckoutRequest(null, null,
+                List.of(new CheckoutRequest.Item(10L, 1,
+                        List.of(new CheckoutRequest.OptionValue(999L, "x")))))))
+                .isInstanceOf(BusinessException.class)
+                .extracting(e -> ((BusinessException) e).errorCode())
+                .isEqualTo(ErrorCode.PARAM_INVALID);
+    }
+
+    @Test
+    void textOptionTooLongIsRejected() {
+        when(skuMapper.selectById(10L)).thenReturn(sku(10L, 100L, 5000, 10));
+        when(productMapper.selectById(100L)).thenReturn(product(100L, 1L, "刻字木盒"));
+        when(shopMapper.selectById(1L)).thenReturn(shop(1L, "甲店"));
+        when(productOptionMapper.selectList(any())).thenReturn(List.of(textOption(100L, 1L, 0)));
+
+        assertThatThrownBy(() -> service.preview(new CheckoutRequest(null, null,
+                List.of(new CheckoutRequest.Item(10L, 1,
+                        List.of(new CheckoutRequest.OptionValue(100L, "超过上限的文字")))))))
+                .isInstanceOf(BusinessException.class)
+                .extracting(e -> ((BusinessException) e).errorCode())
+                .isEqualTo(ErrorCode.PARAM_INVALID);
+    }
+
+    private ProductOption textOption(Long id, Long productId, int priceDelta) {
+        ProductOption option = new ProductOption();
+        option.setId(id);
+        option.setProductId(productId);
+        option.setName("刻字");
+        option.setType("TEXT");
+        option.setRequired(1);
+        option.setMaxLength(6);
+        option.setPriceDeltaCent(priceDelta);
+        option.setStatus("ON");
+        return option;
     }
 
     private Sku sku(Long id, Long productId, int price, int stock) {

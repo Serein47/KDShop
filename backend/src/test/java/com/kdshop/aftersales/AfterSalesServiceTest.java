@@ -58,6 +58,7 @@ class AfterSalesServiceTest {
     @Mock private MerchantOrderMapper merchantOrderMapper;
     @Mock private OrderMapper orderMapper;
     @Mock private OrderItemMapper orderItemMapper;
+    @Mock private com.kdshop.order.mapper.OrderItemOptionMapper orderItemOptionMapper;
     @Mock private SkuMapper skuMapper;
     @Mock private ShopMapper shopMapper;
     @Mock private UserMapper userMapper;
@@ -72,7 +73,8 @@ class AfterSalesServiceTest {
     @BeforeEach
     void setUp() {
         service = new AfterSalesService(afterSaleMapper, logMapper, merchantOrderMapper, orderMapper,
-                orderItemMapper, skuMapper, shopMapper, userMapper, refundService, new ObjectMapper(), meta);
+                orderItemMapper, orderItemOptionMapper, skuMapper, shopMapper, userMapper, refundService,
+                new ObjectMapper(), meta);
         org.springframework.test.util.ReflectionTestUtils.setField(service, "roleMapper", roleMapper);
         org.springframework.test.util.ReflectionTestUtils.setField(service, "userRoleMapper", userRoleMapper);
         SecurityContextHolder.getContext().setAuthentication(

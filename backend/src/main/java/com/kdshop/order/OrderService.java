@@ -21,8 +21,10 @@ import com.kdshop.order.dto.OrderCreatedResult;
 import com.kdshop.order.entity.MerchantOrder;
 import com.kdshop.order.entity.Order;
 import com.kdshop.order.entity.OrderItem;
+import com.kdshop.order.entity.OrderItemOption;
 import com.kdshop.order.mapper.MerchantOrderMapper;
 import com.kdshop.order.mapper.OrderItemMapper;
+import com.kdshop.order.mapper.OrderItemOptionMapper;
 import com.kdshop.order.mapper.OrderMapper;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -58,6 +60,7 @@ public class OrderService {
     private final OrderMapper orderMapper;
     private final MerchantOrderMapper merchantOrderMapper;
     private final OrderItemMapper orderItemMapper;
+    private final OrderItemOptionMapper orderItemOptionMapper;
     private final StringRedisTemplate redis;
     private final MetaProperties meta;
     private final ObjectMapper objectMapper;
@@ -66,6 +69,7 @@ public class OrderService {
     public OrderService(CheckoutService checkoutService, SkuMapper skuMapper, CartItemMapper cartItemMapper,
                         UserCouponMapper userCouponMapper, OrderMapper orderMapper,
                         MerchantOrderMapper merchantOrderMapper, OrderItemMapper orderItemMapper,
+                        OrderItemOptionMapper orderItemOptionMapper,
                         StringRedisTemplate redis, MetaProperties meta, ObjectMapper objectMapper,
                         MailOutboxWriter mailOutboxWriter) {
         this.checkoutService = checkoutService;
@@ -75,6 +79,7 @@ public class OrderService {
         this.orderMapper = orderMapper;
         this.merchantOrderMapper = merchantOrderMapper;
         this.orderItemMapper = orderItemMapper;
+        this.orderItemOptionMapper = orderItemOptionMapper;
         this.redis = redis;
         this.meta = meta;
         this.objectMapper = objectMapper;
@@ -96,7 +101,10 @@ public class OrderService {
 
         List<CheckoutRequest.Item> checkoutItems = request.items() == null ? null
                 : request.items().stream()
-                        .map(item -> new CheckoutRequest.Item(item.skuId(), item.quantity()))
+                        .map(item -> new CheckoutRequest.Item(item.skuId(), item.quantity(),
+                                item.options() == null ? null : item.options().stream()
+                                        .map(option -> new CheckoutRequest.OptionValue(option.optionId(), option.value()))
+                                        .toList()))
                         .toList();
         CheckoutPreview preview = checkoutService.preview(new CheckoutRequest(
                 request.addressId(), request.couponId(), checkoutItems));
@@ -172,6 +180,15 @@ public class OrderService {
                 item.setSubtotalCent(line.subtotal());
                 item.setFlawAck(line.requiresFlawAck() ? 1 : 0);
                 orderItemMapper.insert(item);
+                for (CheckoutPreview.OptionSelection option : line.options()) {
+                    OrderItemOption snapshot = new OrderItemOption();
+                    snapshot.setOrderItemId(item.getId());
+                    snapshot.setOptionId(option.optionId());
+                    snapshot.setOptionName(option.name());
+                    snapshot.setValueText(option.value());
+                    snapshot.setPriceDeltaCent(option.priceDelta());
+                    orderItemOptionMapper.insert(snapshot);
+                }
             }
 
             created.add(new OrderCreatedResult.SubOrder(mo.getSubOrderNo(), sub.merchantId(),

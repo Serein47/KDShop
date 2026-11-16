@@ -14,10 +14,12 @@ import com.kdshop.order.dto.OrderPage;
 import com.kdshop.order.entity.MerchantOrder;
 import com.kdshop.order.entity.Order;
 import com.kdshop.order.entity.OrderItem;
+import com.kdshop.order.entity.OrderItemOption;
 import com.kdshop.order.entity.OrderStatusLog;
 import com.kdshop.order.entity.Shipment;
 import com.kdshop.order.mapper.MerchantOrderMapper;
 import com.kdshop.order.mapper.OrderItemMapper;
+import com.kdshop.order.mapper.OrderItemOptionMapper;
 import com.kdshop.order.mapper.OrderMapper;
 import com.kdshop.order.mapper.OrderStatusLogMapper;
 import com.kdshop.order.mapper.ShipmentMapper;
@@ -50,6 +52,7 @@ public class OrderQueryService {
     private final OrderMapper orderMapper;
     private final MerchantOrderMapper merchantOrderMapper;
     private final OrderItemMapper orderItemMapper;
+    private final OrderItemOptionMapper orderItemOptionMapper;
     private final OrderStatusLogMapper statusLogMapper;
     private final ProductMapper productMapper;
     private final ShipmentMapper shipmentMapper;
@@ -57,12 +60,14 @@ public class OrderQueryService {
     private final MetaProperties meta;
 
     public OrderQueryService(OrderMapper orderMapper, MerchantOrderMapper merchantOrderMapper,
-                             OrderItemMapper orderItemMapper, OrderStatusLogMapper statusLogMapper,
+                             OrderItemMapper orderItemMapper, OrderItemOptionMapper orderItemOptionMapper,
+                             OrderStatusLogMapper statusLogMapper,
                              ProductMapper productMapper, ShipmentMapper shipmentMapper,
                              ObjectMapper objectMapper, MetaProperties meta) {
         this.orderMapper = orderMapper;
         this.merchantOrderMapper = merchantOrderMapper;
         this.orderItemMapper = orderItemMapper;
+        this.orderItemOptionMapper = orderItemOptionMapper;
         this.statusLogMapper = statusLogMapper;
         this.productMapper = productMapper;
         this.shipmentMapper = shipmentMapper;
@@ -103,10 +108,15 @@ public class OrderQueryService {
         }
 
         List<MerchantOrder> subOrders = subOrders(order.getId());
-        Map<Long, List<OrderItem>> itemsBySubOrder = orderItemMapper.selectList(
-                        new LambdaQueryWrapper<OrderItem>().eq(OrderItem::getOrderId, order.getId()))
-                .stream()
+        List<OrderItem> allItems = orderItemMapper.selectList(
+                new LambdaQueryWrapper<OrderItem>().eq(OrderItem::getOrderId, order.getId()));
+        Map<Long, List<OrderItem>> itemsBySubOrder = allItems.stream()
                 .collect(Collectors.groupingBy(OrderItem::getMerchantOrderId));
+        Map<Long, List<OrderItemOption>> optionsByItem = allItems.isEmpty() ? Map.of()
+                : orderItemOptionMapper.selectList(new LambdaQueryWrapper<OrderItemOption>()
+                                .in(OrderItemOption::getOrderItemId,
+                                        allItems.stream().map(OrderItem::getId).toList()))
+                        .stream().collect(Collectors.groupingBy(OrderItemOption::getOrderItemId));
 
         List<OrderDetailView.SubOrderView> subViews = new ArrayList<>();
         for (MerchantOrder sub : subOrders) {
@@ -124,7 +134,8 @@ public class OrderQueryService {
                     sub.getPromisedShipAt(),
                     shipment == null ? null
                             : new OrderDetailView.ShipmentView(shipment.getCarrier(), shipment.getTrackingNo()),
-                    items.stream().map(this::toItemView).toList(),
+                    items.stream().map(item -> toItemView(item,
+                            optionsByItem.getOrDefault(item.getId(), List.of()))).toList(),
                     actions));
         }
 
@@ -173,10 +184,15 @@ public class OrderQueryService {
                 .orderByAsc(MerchantOrder::getId));
     }
 
-    private OrderDetailView.ItemView toItemView(OrderItem item) {
-        return new OrderDetailView.ItemView(item.getId(), item.getProductName(), item.getProductImage(), readMap(item.getSkuSpec()),
-                item.getUnitPriceCent(), item.getQuantity(), item.getSubtotalCent(),
-                item.getFlawAck() != null && item.getFlawAck() == 1);
+    private OrderDetailView.ItemView toItemView(OrderItem item, List<OrderItemOption> options) {
+        return new OrderDetailView.ItemView(item.getId(), item.getProductName(), item.getProductImage(),
+                readMap(item.getSkuSpec()), item.getUnitPriceCent(), item.getQuantity(), item.getSubtotalCent(),
+                item.getFlawAck() != null && item.getFlawAck() == 1,
+                options.stream()
+                        .map(option -> new OrderDetailView.ItemOptionView(option.getOptionId(),
+                                option.getOptionName(), option.getValueText(),
+                                option.getPriceDeltaCent() == null ? 0 : option.getPriceDeltaCent()))
+                        .toList());
     }
 
     private String summary(List<OrderItem> items) {

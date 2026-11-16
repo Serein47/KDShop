@@ -33,8 +33,16 @@ public record AfterSaleView(
         int reapplyCount,
         LocalDateTime createdAt,
         LocalDateTime completedAt,
+        List<ItemView> items,
         List<LogView> logs
 ) {
+    public record ItemView(String name, java.util.Map<String, String> spec, int price, int quantity,
+                           int subtotal, boolean flawAck, List<OptionView> options) {
+    }
+
+    public record OptionView(Long optionId, String name, String value, int priceDelta) {
+    }
+
     public record LogView(String fromStatus, String toStatus, String operatorType, String note, LocalDateTime at) {
     }
 }

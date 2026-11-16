@@ -14,6 +14,10 @@ public record CheckoutRequest(
         Long couponId,
         @Valid List<Item> items
 ) {
-    public record Item(@NotNull Long skuId, @NotNull @Min(1) Integer quantity) {
+    public record Item(@NotNull Long skuId, @NotNull @Min(1) Integer quantity,
+                       @Valid List<OptionValue> options) {
+    }
+
+    public record OptionValue(@NotNull Long optionId, String value) {
     }
 }

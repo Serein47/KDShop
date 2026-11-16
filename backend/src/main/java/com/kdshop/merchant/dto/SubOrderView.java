@@ -21,6 +21,10 @@ public record SubOrderView(
         String address,
         List<Item> items
 ) {
-    public record Item(String name, Map<String, String> spec, int price, int quantity, int subtotal, String image) {
+    public record Item(String name, Map<String, String> spec, int price, int quantity, int subtotal,
+                       String image, List<ItemOption> options) {
+    }
+
+    public record ItemOption(Long optionId, String name, String value, int priceDelta) {
     }
 }

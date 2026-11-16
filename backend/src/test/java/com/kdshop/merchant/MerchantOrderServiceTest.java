@@ -40,6 +40,7 @@ class MerchantOrderServiceTest {
     @Mock private MerchantOrderMapper merchantOrderMapper;
     @Mock private OrderMapper orderMapper;
     @Mock private OrderItemMapper orderItemMapper;
+    @Mock private com.kdshop.order.mapper.OrderItemOptionMapper orderItemOptionMapper;
     @Mock private OrderStatusLogMapper statusLogMapper;
     @Mock private EmailOutboxMapper emailOutboxMapper;
     @Mock private UserMapper userMapper;
@@ -49,7 +50,7 @@ class MerchantOrderServiceTest {
     @BeforeEach
     void setUp() {
         service = new MerchantOrderService(shopMapper, merchantOrderMapper, orderMapper, orderItemMapper,
-                statusLogMapper, emailOutboxMapper, userMapper, new ObjectMapper());
+                orderItemOptionMapper, statusLogMapper, emailOutboxMapper, userMapper, new ObjectMapper());
         SecurityContextHolder.getContext().setAuthentication(
                 UsernamePasswordAuthenticationToken.authenticated(3L, null, List.of()));
     }
