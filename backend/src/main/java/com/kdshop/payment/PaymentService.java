@@ -62,9 +62,10 @@ public class PaymentService {
         if (order == null) {
             throw new BusinessException(ErrorCode.ORDER_NOT_FOUND);
         }
-        if (!"PENDING_PAYMENT".equals(order.getStatus())) {
+        if (!"PENDING_PAYMENT".equals(order.getStatus()) && !"PRODUCING".equals(order.getStatus())) {
             throw new BusinessException(ErrorCode.ORDER_STATE_INVALID, "订单当前状态不可支付");
         }
+        String purpose = resolvePayPurpose(order);
         LocalDateTime expireAt = payExpireAt(order);
         if (LocalDateTime.now().isAfter(expireAt)) {
             throw new BusinessException(ErrorCode.ORDER_STATE_INVALID, "订单已超时，请重新下单");
@@ -72,12 +73,12 @@ public class PaymentService {
 
         Payment existing = paymentMapper.selectOne(new LambdaQueryWrapper<Payment>()
                 .eq(Payment::getOrderId, order.getId())
+                .eq(Payment::getPurpose, purpose)
                 .eq(Payment::getStatus, "PENDING"));
         if (existing != null) {
             return toView(existing, expireAt);
         }
 
-        boolean depositFirst = isPreorder(order) && order.getBalanceCent() != null && order.getBalanceCent() > 0;
         Payment payment = new Payment();
         String paymentNo = "PAY" + System.currentTimeMillis()
                 + String.format("%03d", ThreadLocalRandom.current().nextInt(1000));
@@ -86,11 +87,31 @@ public class PaymentService {
         payment.setOrderId(order.getId());
         payment.setOrderNo(order.getOrderNo());
         payment.setChannel("MOCK");
-        payment.setAmountCent(depositFirst ? order.getDepositCent() : order.getPayAmountCent());
+        payment.setAmountCent(resolveAmount(order, purpose));
         payment.setStatus("PENDING");
-        payment.setPurpose(depositFirst ? "DEPOSIT" : "FULL");
+        payment.setPurpose(purpose);
         paymentMapper.insert(payment);
         return toView(payment, expireAt);
+    }
+
+    /** 待付款且是预售/定制只付定金；制作中付尾款；其余一次付清。 */
+    private String resolvePayPurpose(Order order) {
+        boolean hasBalance = order.getBalanceCent() != null && order.getBalanceCent() > 0;
+        if ("PRODUCING".equals(order.getStatus())) {
+            if (!isPreorder(order) || !hasBalance) {
+                throw new BusinessException(ErrorCode.ORDER_STATE_INVALID, "订单当前状态不可支付");
+            }
+            return "BALANCE";
+        }
+        return isPreorder(order) && hasBalance ? "DEPOSIT" : "FULL";
+    }
+
+    private int resolveAmount(Order order, String purpose) {
+        return switch (purpose) {
+            case "DEPOSIT" -> order.getDepositCent();
+            case "BALANCE" -> order.getBalanceCent();
+            default -> order.getPayAmountCent();
+        };
     }
 
     public PaymentView status(String paymentNo) {
@@ -189,6 +210,11 @@ public class PaymentService {
     }
 
     private LocalDateTime payExpireAt(Order order) {
+        if ("PRODUCING".equals(order.getStatus())) {
+            return order.getBalanceDueAt() == null
+                    ? LocalDateTime.now().plusDays(meta.balancePayDays())
+                    : order.getBalanceDueAt();
+        }
         return isPreorder(order)
                 ? order.getCreatedAt().plusHours(meta.preorderPayTimeoutHours())
                 : order.getCreatedAt().plusMinutes(meta.payTimeoutMinutes());

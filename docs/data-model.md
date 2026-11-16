@@ -77,7 +77,7 @@ erDiagram
 | 表 | 关键字段 | 约束/索引 |
 |---|---|---|
 | `cart_items` | id, user_id, sku_id, quantity | `uk_cart_user_sku` |
-| `orders` | id, order_no, user_id, status, merchant_count, goods_amount_cent, discount_cent, shipping_fee_cent, pay_amount_cent, address_json, coupon_id, remark, order_type(NORMAL/PREORDER/CUSTOM), deposit_cent, balance_cent, promised_ship_at, paid_at, completed_at, cancelled_at, cancel_reason, version | `uk_orders_no`、`idx_orders_user_status`、`idx_orders_status_created` |
+| `orders` | id, order_no, user_id, status, merchant_count, goods_amount_cent, discount_cent, shipping_fee_cent, pay_amount_cent, address_json, coupon_id, remark, order_type(NORMAL/PREORDER/CUSTOM), deposit_cent, balance_cent, promised_ship_at, balance_notified_at, balance_due_at, balance_paid_at, paid_at, completed_at, cancelled_at, cancel_reason, version | `uk_orders_no`、`idx_orders_user_status`、`idx_orders_status_created` |
 | `merchant_orders` | id, sub_order_no, order_id, merchant_id, status, goods_amount_cent, discount_cent, shipping_fee_cent, pay_amount_cent, refunded_amount_cent, promised_ship_at, shipped_at, completed_at, settled | `uk_mo_no`、`idx_mo_merchant_status`、`idx_mo_order` |
 | `order_items` | id, merchant_order_id, order_id, merchant_id, sku_id, product_id, product_name, shop_name, sku_spec, unit_price_cent, quantity, subtotal_cent | `idx_oi_mo`、`idx_oi_product` |
 | `payments` | id, payment_no, order_id, channel(MOCK), amount_cent, status, purpose(FULL/DEPOSIT/BALANCE), out_trade_no, paid_at, callback_at, callback_raw | `uk_payments_out_trade_no`、`uk_payments_no` |

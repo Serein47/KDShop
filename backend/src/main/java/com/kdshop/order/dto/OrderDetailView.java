@@ -18,6 +18,7 @@ public record OrderDetailView(
         String orderType,
         int deposit,
         int balance,
+        LocalDateTime balanceDueAt,
         AddressView address,
         String remark,
         LocalDateTime createdAt,

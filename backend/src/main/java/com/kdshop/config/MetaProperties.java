@@ -13,6 +13,10 @@ public record MetaProperties(
         int autoConfirmDays,
         int settlementProtectionDays,
         /** 预售/定制订单支付定金的时限（小时）；普通订单用 payTimeoutMinutes */
-        int preorderPayTimeoutHours
+        int preorderPayTimeoutHours,
+        /** 承诺发货前多少天发尾款通知 */
+        int balanceNotifyDaysBefore,
+        /** 尾款通知后多少天未付则关闭订单 */
+        int balancePayDays
 ) {
 }

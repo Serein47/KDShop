@@ -58,6 +58,17 @@
 | 变量 | `orderNo`、`paidAmount`、`paymentLabel`（空 / （定金） / （尾款））、`paidAt`、`orderUrl` |
 | 正文要点 | 本次支付金额与性质、支付时间、订单进度说明 |
 
+### 3.1 `ORDER_BALANCE_DUE` 尾款待支付
+
+| 项 | 内容 |
+|---|---|
+| 触发 | 承诺发货前 3 天（定时任务扫 `PRODUCING` 且未通知过的订单） |
+| 收件人 | 下单账号邮箱 |
+| 业务键 | `order_balance_due:{orderNo}` |
+| 主题 | 订单 {orderNo} 尾款待支付，请在 {dueAt} 前付清 |
+| 变量 | `orderNo`、`balance`、`dueAt`、`payUrl` |
+| 正文要点 | 尾款金额、截止时间、逾期关闭且定金不退的提示 |
+
 ### 4. `ORDER_SHIPPED` 发货通知
 
 | 项 | 内容 |

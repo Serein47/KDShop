@@ -95,5 +95,7 @@ kdshop:
     shipping-fee-cent: 1000
     pay-timeout-minutes: 15
     preorder-pay-timeout-hours: 24
+    balance-notify-days-before: 3
+    balance-pay-days: 7
     auto-confirm-days: 15
     settlement-protection-days: 7

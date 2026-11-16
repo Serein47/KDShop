@@ -45,7 +45,7 @@ class PaymentServiceTest {
 
     private PaymentSigner signer;
     private PaymentService service;
-    private final MetaProperties meta = new MetaProperties("CNY", "Asia/Shanghai", 9900, 1000, 15, 15, 7, 24);
+    private final MetaProperties meta = new MetaProperties("CNY", "Asia/Shanghai", 9900, 1000, 15, 15, 7, 24, 3, 7);
 
     @BeforeEach
     void setUp() {
@@ -161,6 +161,31 @@ class PaymentServiceTest {
 
         assertThat(view.purpose()).isEqualTo("DEPOSIT");
         assertThat(view.amount()).isEqualTo(5000);
+        SecurityContextHolder.clearContext();
+    }
+
+    @Test
+    void producingOrderCreatesBalancePayment() {
+        SecurityContextHolder.getContext().setAuthentication(
+                UsernamePasswordAuthenticationToken.authenticated(1L, null, List.of()));
+        Order order = new Order();
+        order.setId(1L);
+        order.setOrderNo("KD202611160002");
+        order.setUserId(1L);
+        order.setStatus("PRODUCING");
+        order.setOrderType("CUSTOM");
+        order.setPayAmountCent(16800);
+        order.setDepositCent(5000);
+        order.setBalanceCent(11800);
+        order.setBalanceDueAt(LocalDateTime.now().plusDays(5));
+        order.setCreatedAt(LocalDateTime.now().minusDays(2));
+        when(orderMapper.selectOne(any())).thenReturn(order);
+        when(paymentMapper.selectOne(any())).thenReturn(null);
+
+        PaymentView view = service.create("KD202611160002");
+
+        assertThat(view.purpose()).isEqualTo("BALANCE");
+        assertThat(view.amount()).isEqualTo(11800);
         SecurityContextHolder.clearContext();
     }
 
