@@ -7,6 +7,7 @@ export interface MerchantSubOrderItem {
   quantity: number
   subtotal: number
   image?: string
+  options: { optionId: number; name: string; value: string; priceDelta: number }[]
 }
 
 export interface MerchantSubOrder {

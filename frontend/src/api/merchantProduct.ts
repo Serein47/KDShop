@@ -63,3 +63,40 @@ export async function uploadImage(file: File): Promise<string> {
   })
   return data.data.key
 }
+
+export interface ProductOption {
+  id?: number
+  name: string
+  type: 'TEXT' | 'ENUM'
+  required: boolean
+  maxLength?: number | null
+  choices: string[]
+  priceDelta: number
+  sort: number
+}
+
+export interface ProductOptionPayload {
+  name: string
+  type: 'TEXT' | 'ENUM'
+  required: boolean
+  maxLength?: number
+  choices?: string[]
+  priceDelta: number
+  sort: number
+}
+
+export async function fetchProductOptions(productId: number): Promise<ProductOption[]> {
+  const { data } = await http.get<ApiResponse<ProductOption[]>>(`/merchant/products/${productId}/options`)
+  return data.data
+}
+
+export async function replaceProductOptions(
+  productId: number,
+  options: ProductOptionPayload[],
+): Promise<ProductOption[]> {
+  const { data } = await http.put<ApiResponse<ProductOption[]>>(
+    `/merchant/products/${productId}/options`,
+    options,
+  )
+  return data.data
+}

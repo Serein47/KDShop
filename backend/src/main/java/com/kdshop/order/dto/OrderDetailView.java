@@ -52,8 +52,12 @@ public record OrderDetailView(
             int price,
             int quantity,
             int subtotal,
-            boolean flawAck
+            boolean flawAck,
+            List<ItemOptionView> options
     ) {
+    }
+
+    public record ItemOptionView(Long optionId, String name, String value, int priceDelta) {
     }
 
     public record SubOrderView(

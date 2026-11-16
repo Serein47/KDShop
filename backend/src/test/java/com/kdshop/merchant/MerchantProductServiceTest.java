@@ -34,6 +34,7 @@ class MerchantProductServiceTest {
 
     @Mock private ShopMapper shopMapper;
     @Mock private ProductMapper productMapper;
+    @Mock private com.kdshop.catalog.mapper.ProductOptionMapper productOptionMapper;
     @Mock private SkuMapper skuMapper;
     @Mock private CategoryMapper categoryMapper;
 
@@ -41,7 +42,7 @@ class MerchantProductServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new MerchantProductService(shopMapper, productMapper, skuMapper, categoryMapper, new ObjectMapper());
+        service = new MerchantProductService(shopMapper, productMapper, productOptionMapper, skuMapper, categoryMapper, new ObjectMapper());
         SecurityContextHolder.getContext().setAuthentication(
                 UsernamePasswordAuthenticationToken.authenticated(3L, null, List.of()));
         Shop shop = new Shop();

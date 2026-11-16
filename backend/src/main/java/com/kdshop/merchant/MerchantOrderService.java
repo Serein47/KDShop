@@ -17,9 +17,11 @@ import com.kdshop.merchant.dto.SubOrderView;
 import com.kdshop.order.entity.MerchantOrder;
 import com.kdshop.order.entity.Order;
 import com.kdshop.order.entity.OrderItem;
+import com.kdshop.order.entity.OrderItemOption;
 import com.kdshop.order.entity.OrderStatusLog;
 import com.kdshop.order.mapper.MerchantOrderMapper;
 import com.kdshop.order.mapper.OrderItemMapper;
+import com.kdshop.order.mapper.OrderItemOptionMapper;
 import com.kdshop.order.mapper.OrderMapper;
 import com.kdshop.order.mapper.OrderStatusLogMapper;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -40,6 +42,7 @@ public class MerchantOrderService {
     private final MerchantOrderMapper merchantOrderMapper;
     private final OrderMapper orderMapper;
     private final OrderItemMapper orderItemMapper;
+    private final OrderItemOptionMapper orderItemOptionMapper;
     private final OrderStatusLogMapper statusLogMapper;
     private final EmailOutboxMapper emailOutboxMapper;
     private final UserMapper userMapper;
@@ -47,12 +50,14 @@ public class MerchantOrderService {
 
     public MerchantOrderService(ShopMapper shopMapper, MerchantOrderMapper merchantOrderMapper,
                                 OrderMapper orderMapper, OrderItemMapper orderItemMapper,
+                                OrderItemOptionMapper orderItemOptionMapper,
                                 OrderStatusLogMapper statusLogMapper, EmailOutboxMapper emailOutboxMapper,
                                 UserMapper userMapper, ObjectMapper objectMapper) {
         this.shopMapper = shopMapper;
         this.merchantOrderMapper = merchantOrderMapper;
         this.orderMapper = orderMapper;
         this.orderItemMapper = orderItemMapper;
+        this.orderItemOptionMapper = orderItemOptionMapper;
         this.statusLogMapper = statusLogMapper;
         this.emailOutboxMapper = emailOutboxMapper;
         this.userMapper = userMapper;
@@ -183,7 +188,19 @@ public class MerchantOrderService {
                 order == null ? null : receiver(order), order == null ? null : phone(order),
                 order == null ? null : address(order),
                 items.stream().map(i -> new SubOrderView.Item(i.getProductName(), readMap(i.getSkuSpec()),
-                        i.getUnitPriceCent(), i.getQuantity(), i.getSubtotalCent(), i.getProductImage())).toList());
+                        i.getUnitPriceCent(), i.getQuantity(), i.getSubtotalCent(), i.getProductImage(),
+                        optionsOf(i.getId()))).toList());
+    }
+
+    private List<SubOrderView.ItemOption> optionsOf(Long orderItemId) {
+        return orderItemOptionMapper.selectList(new LambdaQueryWrapper<OrderItemOption>()
+                        .eq(OrderItemOption::getOrderItemId, orderItemId)
+                        .orderByAsc(OrderItemOption::getId))
+                .stream()
+                .map(option -> new SubOrderView.ItemOption(option.getOptionId(), option.getOptionName(),
+                        option.getValueText(),
+                        option.getPriceDeltaCent() == null ? 0 : option.getPriceDeltaCent()))
+                .toList();
     }
 
     private String receiver(Order order) { return field(order, "receiver"); }

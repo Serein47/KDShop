@@ -107,6 +107,24 @@ async function addToCart() {
   }
 }
 
+function selectedOptions() {
+  return (product.value?.options ?? [])
+    .filter((option) => optionValues.value[option.id])
+    .map((option) => ({ optionId: option.id, value: optionValues.value[option.id].trim() }))
+}
+
+/** 定制项无法随购物车保存，带选项的商品走「立即购买」，由结算页直接下单。 */
+function buyNow() {
+  if (!canBuy.value || !sku.value || !product.value) {
+    ElMessage.warning('请先完成必选项')
+    return
+  }
+  sessionStorage.setItem('kdshop:buynow', JSON.stringify({
+    items: [{ skuId: sku.value.id, quantity: qty.value, options: selectedOptions() }],
+  }))
+  router.push('/checkout?buyNow=1')
+}
+
 onMounted(async () => {
   if (!auth.ready) await auth.fetchMe()
   try {
@@ -215,9 +233,10 @@ onMounted(async () => {
               <span>{{ qty }}</span>
               <button :disabled="qty >= (sku?.stock ?? 1)" @click="qty++">+</button>
             </div>
-            <button class="cta" :disabled="!canBuy" @click="addToCart">加入购物车</button>
+            <button v-if="!product.options.length" class="cta" :disabled="!canBuy" @click="addToCart">加入购物车</button>
+            <button v-else class="cta" :disabled="!canBuy" @click="buyNow">立即购买</button>
           </div>
-          <p class="hint">支持购物车与登录后同步；结算、支付与订单跟踪已开放。</p>
+          <p class="hint">定制商品需选择定制项后立即购买；其他商品支持购物车与登录后同步。</p>
         </div>
       </div>
 

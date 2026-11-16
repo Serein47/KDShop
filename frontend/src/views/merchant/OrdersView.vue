@@ -103,6 +103,9 @@ async function submitShip() {
             <div class="item__info">
               <p>{{ item.name }}</p>
               <span>{{ Object.values(item.spec).join(' · ') || '标准规格' }} × {{ item.quantity }}</span>
+              <span v-if="item.options.length" class="item__options">
+                {{ item.options.map((o) => `${o.name}：${o.value}`).join(' · ') }}
+              </span>
             </div>
             <strong>¥{{ yuan(item.subtotal) }}</strong>
           </div>
@@ -158,6 +161,7 @@ h1 { font-size: 34px; margin: 6px 0 20px; }
 .thumb img { width: 100%; height: 100%; object-fit: cover; }
 .item__info p { margin: 0; font-size: 14px; }
 .item__info span { font-size: 12px; color: var(--muted); }
+.item__options { display: block; color: var(--rust) !important; font-size: 11px; }
 .meta { display: flex; gap: 18px; flex-wrap: wrap; font-size: 12px; color: var(--muted); padding: 10px 0 4px; }
 .actions { padding-top: 10px; }
 .dialog { display: grid; gap: 14px; }

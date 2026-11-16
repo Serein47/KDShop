@@ -2,6 +2,8 @@ package com.kdshop.merchant;
 
 import com.kdshop.common.ApiResponse;
 import com.kdshop.merchant.dto.MerchantProductView;
+import com.kdshop.merchant.dto.ProductOptionRequest;
+import com.kdshop.merchant.dto.ProductOptionView;
 import com.kdshop.merchant.dto.ProductStatusRequest;
 import com.kdshop.merchant.dto.ProductUpsertRequest;
 import jakarta.validation.Valid;
@@ -46,5 +48,17 @@ public class MerchantProductController {
     public ApiResponse<MerchantProductView> status(@PathVariable Long id,
                                                    @Valid @RequestBody ProductStatusRequest request) {
         return ApiResponse.ok(productService.setStatus(id, request.status()));
+    }
+
+    @GetMapping("/{id}/options")
+    public ApiResponse<List<ProductOptionView>> options(@PathVariable Long id) {
+        return ApiResponse.ok(productService.options(id));
+    }
+
+    @PutMapping("/{id}/options")
+    public ApiResponse<List<ProductOptionView>> replaceOptions(
+            @PathVariable Long id,
+            @Valid @RequestBody List<@Valid ProductOptionRequest> requests) {
+        return ApiResponse.ok(productService.replaceOptions(id, requests));
     }
 }

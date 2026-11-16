@@ -234,6 +234,16 @@ async function submitInspect() {
             <img :src="mediaUrl(key)" alt="凭证" />
           </a>
         </div>
+
+        <div v-if="detail.items?.length" class="items">
+          <p v-for="(item, index) in detail.items" :key="index" class="item">
+            <strong>{{ item.name }}</strong> × {{ item.quantity }}
+            <span v-if="item.options.length">
+              · {{ item.options.map((o) => `${o.name}：${o.value}`).join(' · ') }}
+            </span>
+            <span v-if="item.flawAck"> · 已确认手工痕迹</span>
+          </p>
+        </div>
         <p v-if="detail.rejectReason" class="reject">驳回原因：{{ detail.rejectReason }}</p>
         <p v-if="detail.returnTrackingNo" class="muted">
           寄回：{{ detail.returnCarrier }} · {{ detail.returnTrackingNo }}
@@ -351,6 +361,9 @@ h1 { font-size: 34px; margin: 6px 0 0; }
 .timeline strong { display: block; font-size: 13px; }
 .timeline span { font-size: 12px; color: var(--muted); }
 .reason { width: 100%; box-sizing: border-box; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; font-family: inherit; font-size: 14px; resize: vertical; }
+.items { margin: 10px 0 12px; display: grid; gap: 4px; }
+.item { margin: 0; font-size: 13px; color: var(--ink-soft); }
+.item span { color: var(--rust); font-size: 12px; }
 .inspect { display: grid; gap: 12px; margin-top: 10px; }
 .inspect label { display: grid; gap: 6px; font-size: 13px; color: var(--muted); }
 .inspect select, .inspect textarea {

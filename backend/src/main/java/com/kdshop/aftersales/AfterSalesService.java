@@ -30,8 +30,10 @@ import com.kdshop.config.MetaProperties;
 import com.kdshop.order.entity.MerchantOrder;
 import com.kdshop.order.entity.Order;
 import com.kdshop.order.entity.OrderItem;
+import com.kdshop.order.entity.OrderItemOption;
 import com.kdshop.order.mapper.MerchantOrderMapper;
 import com.kdshop.order.mapper.OrderItemMapper;
+import com.kdshop.order.mapper.OrderItemOptionMapper;
 import com.kdshop.order.mapper.OrderMapper;
 import com.kdshop.refund.RefundService;
 import com.kdshop.refund.entity.Refund;
@@ -77,6 +79,7 @@ public class AfterSalesService {
     private final MerchantOrderMapper merchantOrderMapper;
     private final OrderMapper orderMapper;
     private final OrderItemMapper orderItemMapper;
+    private final OrderItemOptionMapper orderItemOptionMapper;
     private final SkuMapper skuMapper;
     private final ShopMapper shopMapper;
     private final UserMapper userMapper;
@@ -86,7 +89,8 @@ public class AfterSalesService {
 
     public AfterSalesService(AfterSaleMapper afterSaleMapper, AfterSaleLogMapper logMapper,
                              MerchantOrderMapper merchantOrderMapper, OrderMapper orderMapper,
-                             OrderItemMapper orderItemMapper, SkuMapper skuMapper,
+                             OrderItemMapper orderItemMapper, OrderItemOptionMapper orderItemOptionMapper,
+                             SkuMapper skuMapper,
                              ShopMapper shopMapper, UserMapper userMapper, RefundService refundService,
                              ObjectMapper objectMapper, MetaProperties meta) {
         this.afterSaleMapper = afterSaleMapper;
@@ -94,6 +98,7 @@ public class AfterSalesService {
         this.merchantOrderMapper = merchantOrderMapper;
         this.orderMapper = orderMapper;
         this.orderItemMapper = orderItemMapper;
+        this.orderItemOptionMapper = orderItemOptionMapper;
         this.skuMapper = skuMapper;
         this.shopMapper = shopMapper;
         this.userMapper = userMapper;
@@ -707,6 +712,7 @@ public class AfterSalesService {
                         row.getOperatorType(), row.getNote(), row.getCreatedAt()))
                 .toList()
                 : null;
+        List<AfterSaleView.ItemView> items = withLogs ? itemViews(afterSale) : null;
         return new AfterSaleView(
                 afterSale.getAsNo(),
                 order == null ? "" : order.getOrderNo(),
@@ -737,7 +743,41 @@ public class AfterSalesService {
                 afterSale.getReapplyCount() == null ? 0 : afterSale.getReapplyCount(),
                 afterSale.getCreatedAt(),
                 afterSale.getCompletedAt(),
+                items,
                 logs);
+    }
+
+    /** 售后详情里的商品行：带定制项与瑕疵确认快照，质检时可核对。 */
+    private List<AfterSaleView.ItemView> itemViews(AfterSale afterSale) {
+        List<OrderItem> orderItems = orderItemMapper.selectList(new LambdaQueryWrapper<OrderItem>()
+                .eq(OrderItem::getMerchantOrderId, afterSale.getMerchantOrderId()));
+        return orderItems.stream().map(item -> {
+            List<AfterSaleView.OptionView> options = orderItemOptionMapper.selectList(
+                            new LambdaQueryWrapper<OrderItemOption>()
+                                    .eq(OrderItemOption::getOrderItemId, item.getId())
+                                    .orderByAsc(OrderItemOption::getId))
+                    .stream()
+                    .map(option -> new AfterSaleView.OptionView(option.getOptionId(), option.getOptionName(),
+                            option.getValueText(),
+                            option.getPriceDeltaCent() == null ? 0 : option.getPriceDeltaCent()))
+                    .toList();
+            return new AfterSaleView.ItemView(item.getProductName(), readMap(item.getSkuSpec()),
+                    item.getUnitPriceCent() == null ? 0 : item.getUnitPriceCent(),
+                    item.getQuantity() == null ? 0 : item.getQuantity(),
+                    item.getSubtotalCent() == null ? 0 : item.getSubtotalCent(),
+                    item.getFlawAck() != null && item.getFlawAck() == 1, options);
+        }).toList();
+    }
+
+    private Map<String, String> readMap(String json) {
+        if (!StringUtils.hasText(json)) {
+            return Map.of();
+        }
+        try {
+            return objectMapper.readValue(json, new TypeReference<Map<String, String>>() { });
+        } catch (Exception e) {
+            return Map.of();
+        }
     }
 
     private void writeLog(Long afterSaleId, String from, String to, String operatorType,

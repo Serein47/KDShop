@@ -18,6 +18,10 @@ public record CreateOrderRequest(
         /** 商品要求确认手工痕迹时，下单必须为 true */
         Boolean flawAck
 ) {
-    public record Item(@NotNull Long skuId, @NotNull @Min(1) Integer quantity) {
+    public record Item(@NotNull Long skuId, @NotNull @Min(1) Integer quantity,
+                       @Valid List<Option> options) {
+    }
+
+    public record Option(@NotNull Long optionId, String value) {
     }
 }

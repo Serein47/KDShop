@@ -2,7 +2,8 @@
 import { computed, onMounted, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import {
-  createProduct, fetchProducts, setProductStatus, updateProduct, uploadImage,
+  createProduct, fetchProductOptions, fetchProducts, replaceProductOptions, setProductStatus,
+  updateProduct, uploadImage,
   type MerchantProduct, type SaleMode,
 } from '@/api/merchantProduct'
 import { fetchCategories, yuan, type CategoryNode } from '@/api/catalog'
@@ -36,6 +37,91 @@ const leaves = computed(() => {
   }
   return out
 })
+
+const optionDialog = ref(false)
+const optionProduct = ref<MerchantProduct | null>(null)
+const optionSaving = ref(false)
+const optionRows = ref<Array<{
+  name: string
+  type: 'TEXT' | 'ENUM'
+  required: boolean
+  maxLength: number
+  choicesText: string
+  priceDeltaYuan: number
+  sort: number
+}>>([])
+
+async function openOptions(item: MerchantProduct) {
+  optionProduct.value = item
+  try {
+    const list = await fetchProductOptions(item.id)
+    optionRows.value = list.map((option) => ({
+      name: option.name,
+      type: option.type,
+      required: option.required,
+      maxLength: option.maxLength ?? 20,
+      choicesText: option.choices.join('、'),
+      priceDeltaYuan: option.priceDelta / 100,
+      sort: option.sort,
+    }))
+    optionDialog.value = true
+  } catch (e: any) {
+    ElMessage.error(e?.response?.data?.message || '定制项加载失败')
+  }
+}
+
+function addOptionRow() {
+  if (optionRows.value.length >= 10) {
+    ElMessage.warning('一个商品最多 10 个定制项')
+    return
+  }
+  optionRows.value.push({
+    name: '', type: 'TEXT', required: false, maxLength: 20,
+    choicesText: '', priceDeltaYuan: 0, sort: optionRows.value.length,
+  })
+}
+
+function removeOptionRow(index: number) {
+  optionRows.value.splice(index, 1)
+}
+
+async function saveOptions() {
+  if (!optionProduct.value) return
+  for (const row of optionRows.value) {
+    if (!row.name.trim()) {
+      ElMessage.warning('定制项名称不能为空')
+      return
+    }
+    if (row.type === 'TEXT' && (!(row.maxLength >= 1) || row.maxLength > 50)) {
+      ElMessage.warning('文本项字数上限需在 1–50')
+      return
+    }
+    if (row.type === 'ENUM' && row.choicesText.split(/[、,，]/).filter((v) => v.trim()).length < 2) {
+      ElMessage.warning('单选型至少需要 2 个可选值')
+      return
+    }
+  }
+  optionSaving.value = true
+  try {
+    await replaceProductOptions(optionProduct.value.id, optionRows.value.map((row, index) => ({
+      name: row.name.trim(),
+      type: row.type,
+      required: row.required,
+      maxLength: row.type === 'TEXT' ? Number(row.maxLength) : undefined,
+      choices: row.type === 'ENUM'
+        ? row.choicesText.split(/[、,，]/).map((v) => v.trim()).filter(Boolean)
+        : undefined,
+      priceDelta: Math.round(Number(row.priceDeltaYuan) * 100),
+      sort: index,
+    })))
+    ElMessage.success('定制项已保存')
+    optionDialog.value = false
+  } catch (e: any) {
+    ElMessage.error(e?.response?.data?.message || '保存失败')
+  } finally {
+    optionSaving.value = false
+  }
+}
 
 async function load() {
   loading.value = true
@@ -181,6 +267,7 @@ async function toggle(item: MerchantProduct) {
         </div>
         <div class="actions">
           <button class="btn btn--ghost" @click="openEdit(item)">编辑</button>
+          <button class="btn btn--ghost" @click="openOptions(item)">定制项</button>
           <button class="btn btn--ghost" @click="toggle(item)">{{ item.status === 'ON' ? '下架' : '上架' }}</button>
         </div>
       </article>
@@ -228,6 +315,32 @@ async function toggle(item: MerchantProduct) {
         <button class="btn btn--solid" :disabled="saving" @click="save">{{ saving ? '保存中…' : '保存' }}</button>
       </template>
     </el-dialog>
+
+    <el-dialog v-model="optionDialog" :title="`定制项 · ${optionProduct?.name ?? ''}`" width="760px">
+      <div class="option-list">
+        <div v-for="(row, index) in optionRows" :key="index" class="option-row">
+          <input v-model="row.name" placeholder="名称，如 刻字内容" />
+          <select v-model="row.type">
+            <option value="TEXT">文本</option>
+            <option value="ENUM">单选</option>
+          </select>
+          <label class="inline"><input v-model="row.required" type="checkbox" /> 必填</label>
+          <input v-if="row.type === 'TEXT'" v-model.number="row.maxLength" type="number" min="1" max="50"
+            placeholder="字数上限" />
+          <input v-else v-model="row.choicesText" placeholder="可选值，用、分隔" />
+          <input v-model.number="row.priceDeltaYuan" type="number" min="0" step="1" placeholder="加价(元)" />
+          <button class="link" type="button" @click="removeOptionRow(index)">删除</button>
+        </div>
+        <p v-if="!optionRows.length" class="muted">还没有定制项。</p>
+        <button class="btn btn--ghost" type="button" @click="addOptionRow">+ 新增定制项</button>
+      </div>
+      <template #footer>
+        <button class="btn btn--ghost" @click="optionDialog = false">取消</button>
+        <button class="btn btn--solid" :disabled="optionSaving" @click="saveOptions">
+          {{ optionSaving ? '保存中…' : '保存定制项' }}
+        </button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -253,5 +366,18 @@ label { display: grid; gap: 6px; font-size: 13px; color: var(--muted); }
 input, select { padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; font-size: 14px; }
 .preview { display: flex; gap: 10px; align-items: center; }
 .preview img { width: 56px; height: 56px; object-fit: cover; border-radius: 8px; }
+.option-list { display: grid; gap: 10px; }
+.option-row {
+  display: grid;
+  grid-template-columns: 1.4fr 90px 70px 1.2fr 100px 48px;
+  gap: 8px;
+  align-items: center;
+}
+.option-row input, .option-row select {
+  padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; font-size: 13px; min-width: 0;
+}
+.option-row .inline { display: flex; align-items: center; gap: 4px; font-size: 12px; color: var(--muted); }
+.option-row .link { border: 0; background: none; color: var(--rust); cursor: pointer; font-size: 12px; }
+.muted { color: var(--muted); font-size: 12px; }
 @media (max-width: 820px) { .grid { grid-template-columns: 1fr; } }
 </style>

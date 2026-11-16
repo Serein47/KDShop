@@ -22,6 +22,7 @@ const showForm = ref(false)
 const form = ref({ receiver: '', phone: '', province: '', city: '', district: '', detail: '' })
 const submitting = ref(false)
 const flawAck = ref(false)
+const buyNowItems = ref<{ skuId: number; quantity: number; options?: { optionId: number; value: string }[] }[] | null>(null)
 
 const needsFlawAck = computed(() =>
   (preview.value?.subOrders ?? []).some((sub) => sub.items.some((line) => line.requiresFlawAck)),
@@ -61,6 +62,7 @@ async function load(preserve = true) {
     preview.value = await fetchPreview({
       addressId: preserve ? addressId.value : undefined,
       couponId: couponId.value,
+      items: buyNowItems.value ?? undefined,
     })
   } catch (e: any) {
     if (e?.response?.data?.code === 40003) {
@@ -82,6 +84,14 @@ onMounted(async () => {
   }
   addresses.value = await fetchAddresses()
   addressId.value = addresses.value.find((a) => a.isDefault === 1)?.id ?? addresses.value[0]?.id
+  const raw = sessionStorage.getItem('kdshop:buynow')
+  if (raw) {
+    try {
+      buyNowItems.value = JSON.parse(raw).items ?? null
+    } catch {
+      buyNowItems.value = null
+    }
+  }
   await load()
 })
 
@@ -135,10 +145,13 @@ async function placeOrder() {
       {
         addressId: addressId.value,
         couponId: couponId.value,
+        items: buyNowItems.value ?? undefined,
         flawAck: needsFlawAck.value ? true : undefined,
       },
       idempotencyKey(),
     )
+    sessionStorage.removeItem('kdshop:buynow')
+    buyNowItems.value = null
     created.value = { orderNo: result.orderNo, payAmount: result.payAmount }
     await cart.load()
     ElMessage.success('下单成功')
@@ -224,7 +237,12 @@ async function placeOrder() {
           <div v-for="sub in preview.subOrders" :key="sub.merchantId" class="shop">
             <p class="shop__name">{{ sub.shopName }}</p>
             <div v-for="line in sub.items" :key="line.skuId" class="line">
-              <span class="line__name">{{ line.name }}</span>
+              <span class="line__name">
+                {{ line.name }}
+                <em v-if="line.options.length">
+                  {{ line.options.map((o) => `${o.name}：${o.value}`).join(' · ') }}
+                </em>
+              </span>
               <span class="line__spec">{{ Object.values(line.spec).join(' · ') || '标准规格' }}</span>
               <span class="line__qty">×{{ line.quantity }}</span>
               <span class="line__amount">¥{{ yuan(line.subtotal) }}</span>
@@ -347,6 +365,7 @@ async function placeOrder() {
 .shop__name { margin: 0 0 8px; font-size: 14px; color: var(--ink-soft); }
 .line { display: grid; grid-template-columns: 1fr auto auto auto; gap: 14px; font-size: 13px; padding: 6px 0; }
 .line__spec { color: var(--muted); }
+.line__name em { display: block; font-style: normal; font-size: 11px; color: var(--rust); margin-top: 2px; }
 .line__qty { color: var(--muted); }
 .line__amount { color: var(--ink); }
 .shop__foot { display: flex; gap: 18px; justify-content: flex-end; font-size: 12px; color: var(--muted); border-top: 1px dashed var(--line); margin-top: 8px; padding-top: 8px; }

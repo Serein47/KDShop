@@ -11,7 +11,7 @@ export interface CreatedOrder {
 export async function createOrder(payload: {
   addressId?: number
   couponId?: number
-  items?: { skuId: number; quantity: number }[]
+  items?: { skuId: number; quantity: number; options?: { optionId: number; value: string }[] }[]
   remark?: string
   isGift?: boolean
   giftMessage?: string
@@ -78,6 +78,7 @@ export interface OrderItemView {
   quantity: number
   subtotal: number
   flawAck: boolean
+  options: { optionId: number; name: string; value: string; priceDelta: number }[]
 }
 
 export interface SubOrderView {

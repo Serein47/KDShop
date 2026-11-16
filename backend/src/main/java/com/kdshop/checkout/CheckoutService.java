@@ -8,9 +8,11 @@ import com.kdshop.address.mapper.AddressMapper;
 import com.kdshop.cart.entity.CartItem;
 import com.kdshop.cart.mapper.CartItemMapper;
 import com.kdshop.catalog.entity.Product;
+import com.kdshop.catalog.entity.ProductOption;
 import com.kdshop.catalog.entity.Shop;
 import com.kdshop.catalog.entity.Sku;
 import com.kdshop.catalog.mapper.ProductMapper;
+import com.kdshop.catalog.mapper.ProductOptionMapper;
 import com.kdshop.catalog.mapper.ShopMapper;
 import com.kdshop.catalog.mapper.SkuMapper;
 import com.kdshop.checkout.dto.CheckoutPreview;
@@ -40,13 +42,15 @@ import java.util.stream.Collectors;
 @Service
 public class CheckoutService {
 
-    private record Row(Sku sku, Product product, Shop shop, int quantity) {
+    private record Row(Sku sku, Product product, Shop shop, int quantity,
+                       List<CheckoutPreview.OptionSelection> options, int unitPrice) {
     }
 
 
     private final CartItemMapper cartItemMapper;
     private final SkuMapper skuMapper;
     private final ProductMapper productMapper;
+    private final ProductOptionMapper productOptionMapper;
     private final ShopMapper shopMapper;
     private final AddressMapper addressMapper;
     private final CouponMapper couponMapper;
@@ -55,11 +59,13 @@ public class CheckoutService {
     private final ObjectMapper objectMapper;
 
     public CheckoutService(CartItemMapper cartItemMapper, SkuMapper skuMapper, ProductMapper productMapper,
+                           ProductOptionMapper productOptionMapper,
                            ShopMapper shopMapper, AddressMapper addressMapper, CouponMapper couponMapper,
                            UserCouponMapper userCouponMapper, MetaProperties meta, ObjectMapper objectMapper) {
         this.cartItemMapper = cartItemMapper;
         this.skuMapper = skuMapper;
         this.productMapper = productMapper;
+        this.productOptionMapper = productOptionMapper;
         this.shopMapper = shopMapper;
         this.addressMapper = addressMapper;
         this.couponMapper = couponMapper;
@@ -92,7 +98,12 @@ public class CheckoutService {
                         product.getName() + " 库存不足，当前可买 " + available + " 件",
                         Map.of("skuId", sku.getId(), "available", available));
             }
-            rows.add(new Row(sku, product, shop, item.quantity()));
+            List<CheckoutPreview.OptionSelection> selections = resolveOptions(product, item.options());
+            int optionDelta = selections.stream()
+                    .mapToInt(CheckoutPreview.OptionSelection::priceDelta)
+                    .sum();
+            rows.add(new Row(sku, product, shop, item.quantity(), selections,
+                    sku.getPriceCent() + optionDelta));
         }
 
         // 定金/尾款只按整单算，所以现货与预售/定制不能混在一张单里（ISSUE-34 定稿）
@@ -105,7 +116,7 @@ public class CheckoutService {
         Map<Long, List<Row>> byMerchant = rows.stream()
                 .collect(Collectors.groupingBy(row -> row.product().getMerchantId(), LinkedHashMap::new, Collectors.toList()));
 
-        int goodsTotal = rows.stream().mapToInt(row -> row.sku().getPriceCent() * row.quantity()).sum();
+        int goodsTotal = rows.stream().mapToInt(row -> row.unitPrice() * row.quantity()).sum();
 
         int totalDiscount = 0;
         if (request.couponId() != null) {
@@ -120,7 +131,7 @@ public class CheckoutService {
 
         for (Map.Entry<Long, List<Row>> entry : byMerchant.entrySet()) {
             List<Row> groupRows = entry.getValue();
-            int goods = groupRows.stream().mapToInt(row -> row.sku().getPriceCent() * row.quantity()).sum();
+            int goods = groupRows.stream().mapToInt(row -> row.unitPrice() * row.quantity()).sum();
             int shipping = goods >= meta.shippingFreeThresholdCent() ? 0 : meta.shippingFeeCent();
             int discount = discounts.getOrDefault(entry.getKey(), 0);
             int pay = Math.max(goods - discount + shipping, 0);
@@ -129,10 +140,10 @@ public class CheckoutService {
                     .map(row -> new CheckoutPreview.Line(
                             row.sku().getId(), row.product().getId(), row.product().getName(),
                             row.product().getMainImage(),
-                            readMap(row.sku().getSpecJson()), row.sku().getPriceCent(),
-                            row.quantity(), row.sku().getPriceCent() * row.quantity(),
+                            readMap(row.sku().getSpecJson()), row.unitPrice(),
+                            row.quantity(), row.unitPrice() * row.quantity(),
                             row.product().getRequiresFlawAck() != null && row.product().getRequiresFlawAck() == 1,
-                            row.product().getFlawNote()))
+                            row.product().getFlawNote(), row.options()))
                     .toList();
 
             Shop shop = groupRows.get(0).shop();
@@ -170,11 +181,70 @@ public class CheckoutService {
     private int deposit(List<Row> rows, int payTotal) {
         int raw = 0;
         for (Row row : rows) {
-            int line = row.sku().getPriceCent() * row.quantity();
+            int line = row.unitPrice() * row.quantity();
             int rate = row.product().getDepositRate() == null ? 0 : row.product().getDepositRate();
             raw += (int) Math.round(line * rate / 10000.0);
         }
         return Math.min(Math.max(raw, 100), payTotal);
+    }
+
+    /**
+     * 校验并快照定制项：未知选项、必填缺失、文本超长、单选值非法都返回 10001。
+     * 加价以服务端定义为准，不信任前端价格。
+     */
+    private List<CheckoutPreview.OptionSelection> resolveOptions(Product product,
+                                                                 List<CheckoutRequest.OptionValue> selected) {
+        List<ProductOption> definitions = productOptionMapper.selectList(
+                new LambdaQueryWrapper<ProductOption>()
+                        .eq(ProductOption::getProductId, product.getId())
+                        .eq(ProductOption::getStatus, "ON")
+                        .orderByAsc(ProductOption::getSort));
+        if (definitions.isEmpty()) {
+            if (selected != null && !selected.isEmpty()) {
+                throw new BusinessException(ErrorCode.PARAM_INVALID, "该商品没有可选项");
+            }
+            return List.of();
+        }
+        Map<Long, String> values = new LinkedHashMap<>();
+        if (selected != null) {
+            for (CheckoutRequest.OptionValue value : selected) {
+                values.put(value.optionId(), value.value());
+            }
+        }
+        Map<Long, ProductOption> byId = definitions.stream()
+                .collect(Collectors.toMap(ProductOption::getId, option -> option));
+        for (Long optionId : values.keySet()) {
+            if (!byId.containsKey(optionId)) {
+                throw new BusinessException(ErrorCode.PARAM_INVALID, "定制项不存在或已下架");
+            }
+        }
+
+        List<CheckoutPreview.OptionSelection> result = new ArrayList<>();
+        for (ProductOption definition : definitions) {
+            String value = values.get(definition.getId());
+            if (!StringUtils.hasText(value)) {
+                if (definition.getRequired() != null && definition.getRequired() == 1) {
+                    throw new BusinessException(ErrorCode.PARAM_INVALID,
+                            "请填写或选择：" + definition.getName());
+                }
+                continue;
+            }
+            String trimmed = value.trim();
+            if ("TEXT".equals(definition.getType())) {
+                int max = definition.getMaxLength() == null ? 50 : definition.getMaxLength();
+                if (trimmed.length() > max) {
+                    throw new BusinessException(ErrorCode.PARAM_INVALID,
+                            definition.getName() + "最多 " + max + " 字");
+                }
+            } else if ("ENUM".equals(definition.getType())
+                    && !readList(definition.getChoicesJson()).contains(trimmed)) {
+                throw new BusinessException(ErrorCode.PARAM_INVALID,
+                        definition.getName() + "的取值不合法");
+            }
+            result.add(new CheckoutPreview.OptionSelection(definition.getId(), definition.getName(),
+                    trimmed, definition.getPriceDeltaCent() == null ? 0 : definition.getPriceDeltaCent()));
+        }
+        return result;
     }
 
     private List<CheckoutRequest.Item> resolveItems(Long userId, CheckoutRequest request) {
@@ -187,7 +257,7 @@ public class CheckoutService {
         if (cart.isEmpty()) {
             throw new BusinessException(ErrorCode.CART_EMPTY);
         }
-        return cart.stream().map(item -> new CheckoutRequest.Item(item.getSkuId(), item.getQuantity())).toList();
+        return cart.stream().map(item -> new CheckoutRequest.Item(item.getSkuId(), item.getQuantity(), null)).toList();
     }
 
     private int resolveDiscount(Long userId, Long couponId, int goodsTotal) {
@@ -297,6 +367,17 @@ public class CheckoutService {
             return objectMapper.readValue(json, new TypeReference<Map<String, String>>() { });
         } catch (Exception e) {
             return Map.of();
+        }
+    }
+
+    private List<String> readList(String json) {
+        if (!StringUtils.hasText(json)) {
+            return List.of();
+        }
+        try {
+            return objectMapper.readValue(json, new TypeReference<List<String>>() { });
+        } catch (Exception e) {
+            return List.of();
         }
     }
 

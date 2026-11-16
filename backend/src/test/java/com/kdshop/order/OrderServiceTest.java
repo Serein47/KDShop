@@ -16,6 +16,7 @@ import com.kdshop.order.dto.OrderCreatedResult;
 import com.kdshop.order.entity.MerchantOrder;
 import com.kdshop.order.entity.Order;
 import com.kdshop.order.entity.OrderItem;
+import com.kdshop.order.entity.OrderItemOption;
 import com.kdshop.order.mapper.MerchantOrderMapper;
 import com.kdshop.order.mapper.OrderItemMapper;
 import com.kdshop.order.mapper.OrderMapper;
@@ -52,6 +53,7 @@ class OrderServiceTest {
     @Mock private OrderMapper orderMapper;
     @Mock private MerchantOrderMapper merchantOrderMapper;
     @Mock private OrderItemMapper orderItemMapper;
+    @Mock private com.kdshop.order.mapper.OrderItemOptionMapper orderItemOptionMapper;
     @Mock private StringRedisTemplate redis;
     @Mock private ValueOperations<String, String> valueOps;
     @Mock private MailOutboxWriter mailOutboxWriter;
@@ -62,8 +64,8 @@ class OrderServiceTest {
     @BeforeEach
     void setUp() {
         service = new OrderService(checkoutService, skuMapper, cartItemMapper, userCouponMapper,
-                orderMapper, merchantOrderMapper, orderItemMapper, redis, meta, new ObjectMapper(),
-                mailOutboxWriter);
+                orderMapper, merchantOrderMapper, orderItemMapper, orderItemOptionMapper, redis, meta,
+                new ObjectMapper(), mailOutboxWriter);
         SecurityContextHolder.getContext().setAuthentication(
                 UsernamePasswordAuthenticationToken.authenticated(1L, null, List.of()));
     }
@@ -162,9 +164,42 @@ class OrderServiceTest {
         assertThat(captor.getValue().getFlawAck()).isEqualTo(1);
     }
 
+    @Test
+    void optionSnapshotIsWrittenAndPriced() {
+        when(redis.opsForValue()).thenReturn(valueOps);
+        when(checkoutService.preview(any(CheckoutRequest.class))).thenReturn(optionPreview());
+        when(skuMapper.lockStock(any(), any(Integer.class).intValue())).thenReturn(1);
+        when(valueOps.increment(anyString())).thenReturn(1L);
+
+        service.create(new CreateOrderRequest(null, null, null, null, null, null, null, null), null);
+
+        org.mockito.ArgumentCaptor<OrderItem> item = org.mockito.ArgumentCaptor.forClass(OrderItem.class);
+        verify(orderItemMapper).insert(item.capture());
+        assertThat(item.getValue().getUnitPriceCent()).isEqualTo(13800);
+
+        org.mockito.ArgumentCaptor<OrderItemOption> option =
+                org.mockito.ArgumentCaptor.forClass(OrderItemOption.class);
+        verify(orderItemOptionMapper).insert(option.capture());
+        assertThat(option.getValue().getOptionName()).isEqualTo("刻字");
+        assertThat(option.getValue().getValueText()).isEqualTo("小明");
+        assertThat(option.getValue().getPriceDeltaCent()).isEqualTo(1000);
+    }
+
+    private CheckoutPreview optionPreview() {
+        CheckoutPreview.Line line = new CheckoutPreview.Line(1L, 1L, "刻字木盒", null,
+                Map.of(), 13800, 1, 13800, false, null,
+                List.of(new CheckoutPreview.OptionSelection(100L, "刻字", "小明", 1000)));
+        CheckoutPreview.SubOrder sub = new CheckoutPreview.SubOrder(1L, "山野杂货", List.of(line),
+                13800, 0, 0, 13800);
+        return new CheckoutPreview(List.of(sub),
+                new CheckoutPreview.Summary(13800, 0, 0, 13800, "NORMAL", 0, 0),
+                new CheckoutPreview.Coupons(List.of(), List.of()),
+                new CheckoutPreview.AddressView("张三", "13800008000", "浙江省", "杭州市", "西湖区", "文三路 1 号"));
+    }
+
     private CheckoutPreview flawPreview() {
         CheckoutPreview.Line line = new CheckoutPreview.Line(1L, 1L, "粗陶马克杯", null,
-                Map.of(), 12800, 1, 12800, true, "釉面可能有细微开片");
+                Map.of(), 12800, 1, 12800, true, "釉面可能有细微开片", List.of());
         CheckoutPreview.SubOrder sub = new CheckoutPreview.SubOrder(1L, "山野杂货", List.of(line),
                 12800, 0, 0, 12800);
         return new CheckoutPreview(List.of(sub),
@@ -175,7 +210,7 @@ class OrderServiceTest {
 
     private CheckoutPreview preorderPreview() {
         CheckoutPreview.Line line = new CheckoutPreview.Line(1L, 1L, "刻字胡桃木盒", "products/1/1.jpg",
-                Map.of("尺寸", "中"), 12800, 2, 25600, false, null);
+                Map.of("尺寸", "中"), 12800, 2, 25600, false, null, List.of());
         CheckoutPreview.SubOrder sub = new CheckoutPreview.SubOrder(1L, "山野杂货", List.of(line),
                 25600, 0, 0, 25600);
         return new CheckoutPreview(List.of(sub),
@@ -186,7 +221,7 @@ class OrderServiceTest {
 
     private CheckoutPreview preview() {
         CheckoutPreview.Line line = new CheckoutPreview.Line(1L, 1L, "粗陶马克杯", "products/1/1.jpg", Map.of("颜色", "米白"),
-                12800, 2, 25600, false, null);
+                12800, 2, 25600, false, null, List.of());
         CheckoutPreview.SubOrder sub = new CheckoutPreview.SubOrder(1L, "山野杂货", List.of(line),
                 25600, 0, 0, 25600);
         return new CheckoutPreview(List.of(sub), new CheckoutPreview.Summary(25600, 0, 0, 25600, "NORMAL", 0, 0),

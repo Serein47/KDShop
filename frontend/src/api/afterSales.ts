@@ -20,6 +20,16 @@ export interface AfterSaleLog {
   at: string
 }
 
+export interface AfterSaleItem {
+  name: string
+  spec: Record<string, string>
+  price: number
+  quantity: number
+  subtotal: number
+  flawAck: boolean
+  options: { optionId: number; name: string; value: string; priceDelta: number }[]
+}
+
 export interface AfterSale {
   asNo: string
   orderNo: string
@@ -49,6 +59,7 @@ export interface AfterSale {
   reapplyCount: number
   createdAt: string
   completedAt?: string
+  items?: AfterSaleItem[]
   logs?: AfterSaleLog[]
 }
 
