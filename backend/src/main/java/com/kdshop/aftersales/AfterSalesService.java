@@ -1,12 +1,15 @@
 package com.kdshop.aftersales;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.kdshop.admin.AuditService;
 import com.kdshop.aftersales.dto.AfterSaleView;
 import com.kdshop.aftersales.dto.ApplyAfterSaleRequest;
+import com.kdshop.aftersales.dto.InspectRequest;
 import com.kdshop.aftersales.dto.ReviewAfterSaleRequest;
+import com.kdshop.aftersales.dto.ReturnShipmentRequest;
 import com.kdshop.aftersales.entity.AfterSale;
 import com.kdshop.aftersales.entity.AfterSaleLog;
 import com.kdshop.aftersales.mapper.AfterSaleLogMapper;
@@ -19,12 +22,15 @@ import com.kdshop.auth.mapper.UserMapper;
 import com.kdshop.auth.mapper.UserRoleMapper;
 import com.kdshop.catalog.entity.Shop;
 import com.kdshop.catalog.mapper.ShopMapper;
+import com.kdshop.catalog.mapper.SkuMapper;
 import com.kdshop.common.BusinessException;
 import com.kdshop.common.ErrorCode;
 import com.kdshop.config.MetaProperties;
 import com.kdshop.order.entity.MerchantOrder;
 import com.kdshop.order.entity.Order;
+import com.kdshop.order.entity.OrderItem;
 import com.kdshop.order.mapper.MerchantOrderMapper;
+import com.kdshop.order.mapper.OrderItemMapper;
 import com.kdshop.order.mapper.OrderMapper;
 import com.kdshop.refund.RefundService;
 import com.kdshop.refund.entity.Refund;
@@ -69,6 +75,8 @@ public class AfterSalesService {
     private final AfterSaleLogMapper logMapper;
     private final MerchantOrderMapper merchantOrderMapper;
     private final OrderMapper orderMapper;
+    private final OrderItemMapper orderItemMapper;
+    private final SkuMapper skuMapper;
     private final ShopMapper shopMapper;
     private final UserMapper userMapper;
     private final RefundService refundService;
@@ -77,12 +85,15 @@ public class AfterSalesService {
 
     public AfterSalesService(AfterSaleMapper afterSaleMapper, AfterSaleLogMapper logMapper,
                              MerchantOrderMapper merchantOrderMapper, OrderMapper orderMapper,
+                             OrderItemMapper orderItemMapper, SkuMapper skuMapper,
                              ShopMapper shopMapper, UserMapper userMapper, RefundService refundService,
                              ObjectMapper objectMapper, MetaProperties meta) {
         this.afterSaleMapper = afterSaleMapper;
         this.logMapper = logMapper;
         this.merchantOrderMapper = merchantOrderMapper;
         this.orderMapper = orderMapper;
+        this.orderItemMapper = orderItemMapper;
+        this.skuMapper = skuMapper;
         this.shopMapper = shopMapper;
         this.userMapper = userMapper;
         this.refundService = refundService;
@@ -230,6 +241,7 @@ public class AfterSalesService {
                     "仅退款完成：" + refund.getRefundNo());
         } else {
             afterSale.setStatus("RETURNING");
+            afterSale.setReturnDueAt(LocalDateTime.now().plusDays(meta.afterSalesReturnDays()));
             afterSaleMapper.updateById(afterSale);
             writeLog(afterSale.getId(), "APPROVED", "RETURNING", "SYSTEM", null, "等待顾客寄回");
         }
@@ -273,7 +285,171 @@ public class AfterSalesService {
         return view(afterSale, true);
     }
 
-    // ---- 后续 Issue（#47 寄回/质检、#48 裁决、#49 结算冻结）在此扩展 ----
+    // ---- 退货物流与质检（ISSUE-38） ----
+
+    /** 顾客填写寄回物流；7 天内未填由定时任务关闭（见 AfterSalesTimeoutJob）。 */
+    @Transactional
+    public AfterSaleView submitReturn(String asNo, ReturnShipmentRequest request) {
+        Long userId = currentUserId();
+        AfterSale afterSale = require(asNo);
+        if (!afterSale.getUserId().equals(userId)) {
+            throw new BusinessException(ErrorCode.RESOURCE_FORBIDDEN);
+        }
+        if (!"RETURNING".equals(afterSale.getStatus())) {
+            throw new BusinessException(ErrorCode.AFTER_SALES_STATE_INVALID, "当前不在待寄回状态");
+        }
+        if (StringUtils.hasText(afterSale.getReturnTrackingNo())) {
+            throw new BusinessException(ErrorCode.AFTER_SALES_STATE_INVALID, "已经填写过寄回物流");
+        }
+        afterSale.setReturnCarrier(request.carrier().trim());
+        afterSale.setReturnTrackingNo(request.trackingNo().trim());
+        afterSale.setReturnShippedAt(LocalDateTime.now());
+        afterSaleMapper.updateById(afterSale);
+        writeLog(afterSale.getId(), "RETURNING", "RETURNING", "USER", userId,
+                "填写寄回物流：" + request.carrier() + " " + request.trackingNo());
+        return view(afterSale, true);
+    }
+
+    /** 商家确认收到退货，开始 48 小时质检倒计时。 */
+    @Transactional
+    public AfterSaleView markReceived(String asNo) {
+        Shop shop = currentShop();
+        AfterSale afterSale = require(asNo);
+        if (!afterSale.getMerchantId().equals(shop.getId())) {
+            throw new BusinessException(ErrorCode.MERCHANT_SCOPE_FORBIDDEN);
+        }
+        if (!"RETURNING".equals(afterSale.getStatus())) {
+            throw new BusinessException(ErrorCode.AFTER_SALES_STATE_INVALID, "当前不在待收货状态");
+        }
+        if (!StringUtils.hasText(afterSale.getReturnTrackingNo())) {
+            throw new BusinessException(ErrorCode.AFTER_SALES_STATE_INVALID, "顾客还没有填写寄回物流");
+        }
+        LocalDateTime now = LocalDateTime.now();
+        afterSale.setStatus("RECEIVED");
+        afterSale.setReceivedAt(now);
+        afterSale.setInspectDueAt(now.plusHours(meta.afterSalesInspectHours()));
+        afterSale.setOperatorType("MERCHANT");
+        afterSale.setOperatorId(shop.getId());
+        afterSaleMapper.updateById(afterSale);
+        writeLog(afterSale.getId(), "RETURNING", "RECEIVED", "MERCHANT", shop.getId(), "商家确认收货");
+        return view(afterSale, true);
+    }
+
+    /** 商家提交质检：良品回补库存并退款，残次仍退款但不回补。 */
+    @Transactional
+    public AfterSaleView inspect(String asNo, InspectRequest request) {
+        Shop shop = currentShop();
+        AfterSale afterSale = require(asNo);
+        if (!afterSale.getMerchantId().equals(shop.getId())) {
+            throw new BusinessException(ErrorCode.MERCHANT_SCOPE_FORBIDDEN);
+        }
+        String result = normalizeInspectResult(request.result());
+        boolean done = finishInspection(afterSale, result, request.note(), request.images(),
+                "MERCHANT", shop.getId());
+        if (!done) {
+            throw new BusinessException(ErrorCode.AFTER_SALES_STATE_INVALID, "该售后单不在待质检状态");
+        }
+        return view(afterSale, true);
+    }
+
+    /** 超时未质检：系统按良品处理并自动退款，保护顾客。 */
+    @Transactional
+    public boolean autoInspectGood(Long afterSaleId) {
+        AfterSale afterSale = afterSaleMapper.selectById(afterSaleId);
+        if (afterSale == null || !"RECEIVED".equals(afterSale.getStatus())) {
+            return false;
+        }
+        return finishInspection(afterSale, "GOOD", "商家超时未质检，系统按良品处理", List.of(),
+                "SYSTEM", null);
+    }
+
+    /**
+     * 质检结算：条件更新从 RECEIVED 抢占到 INSPECTED，保证人工与自动只生效一次；
+     * 良品回补库存，随后执行退款并转 REFUNDED。
+     */
+    private boolean finishInspection(AfterSale afterSale, String result, String note, List<String> images,
+                                     String operatorType, Long operatorId) {
+        int updated = afterSaleMapper.update(null, new UpdateWrapper<AfterSale>()
+                .eq("id", afterSale.getId())
+                .eq("status", "RECEIVED")
+                .set("status", "INSPECTED")
+                .set("inspect_result", result)
+                .set("inspect_note", note)
+                .set("inspect_images_json", writeJson(images))
+                .set("operator_type", operatorType)
+                .set("operator_id", operatorId));
+        if (updated == 0) {
+            return false;
+        }
+        afterSale.setStatus("INSPECTED");
+        afterSale.setInspectResult(result);
+        afterSale.setInspectNote(note);
+        afterSale.setInspectImagesJson(writeJson(images));
+        writeLog(afterSale.getId(), "RECEIVED", "INSPECTED", operatorType, operatorId,
+                "质检：" + ("GOOD".equals(result) ? "良品" : "残次")
+                        + (StringUtils.hasText(note) ? " · " + note : ""));
+
+        if ("GOOD".equals(result)) {
+            restoreStock(afterSale);
+            afterSale.setStockRestored(1);
+        }
+
+        MerchantOrder sub = merchantOrderMapper.selectById(afterSale.getMerchantOrderId());
+        Refund refund = refundService.executeForAfterSales(sub, afterSale.getRefundAmountCent(),
+                "售后 " + afterSale.getAsNo(), operatorType, operatorId);
+        afterSale.setStatus("REFUNDED");
+        afterSale.setRefundNo(refund.getRefundNo());
+        afterSale.setCompletedAt(LocalDateTime.now());
+        afterSaleMapper.updateById(afterSale);
+        writeLog(afterSale.getId(), "INSPECTED", "REFUNDED", "SYSTEM", null,
+                "退款完成：" + refund.getRefundNo()
+                        + ("GOOD".equals(result) ? "（良品已回补库存）" : "（残次不回补库存）"));
+        audit(operatorType, operatorId, "AFTER_SALES_INSPECT", afterSale.getAsNo(),
+                Map.of("result", result, "refundNo", refund.getRefundNo()));
+        return true;
+    }
+
+    private void restoreStock(AfterSale afterSale) {
+        if (afterSale.getStockRestored() != null && afterSale.getStockRestored() == 1) {
+            return;
+        }
+        List<OrderItem> items = orderItemMapper.selectList(new LambdaQueryWrapper<OrderItem>()
+                .eq(OrderItem::getMerchantOrderId, afterSale.getMerchantOrderId()));
+        for (OrderItem item : items) {
+            skuMapper.restoreStock(item.getSkuId(), item.getQuantity());
+        }
+    }
+
+    private String normalizeInspectResult(String result) {
+        String value = StringUtils.hasText(result) ? result.trim().toUpperCase() : "";
+        if (!Set.of("GOOD", "DEFECTIVE").contains(value)) {
+            throw new BusinessException(ErrorCode.PARAM_INVALID, "质检结果只能是良品或残次");
+        }
+        return value;
+    }
+
+    /** 7 天未寄回：关闭售后（定时任务调用）。 */
+    @Transactional
+    public boolean closeOverdueReturn(Long afterSaleId) {
+        AfterSale afterSale = afterSaleMapper.selectById(afterSaleId);
+        if (afterSale == null || !"RETURNING".equals(afterSale.getStatus())
+                || StringUtils.hasText(afterSale.getReturnTrackingNo())) {
+            return false;
+        }
+        int updated = afterSaleMapper.update(null, new UpdateWrapper<AfterSale>()
+                .eq("id", afterSaleId)
+                .eq("status", "RETURNING")
+                .isNull("return_tracking_no")
+                .set("status", "CLOSED")
+                .set("completed_at", LocalDateTime.now()));
+        if (updated == 0) {
+            return false;
+        }
+        writeLog(afterSaleId, "RETURNING", "CLOSED", "SYSTEM", null, "超时未填写寄回物流，售后关闭");
+        return true;
+    }
+
+    // ---- 平台裁决（ISSUE-39）在此扩展 ----
 
     private void checkNoOpenAfterSale(Long merchantOrderId) {
         List<AfterSale> existing = afterSaleMapper.selectList(new LambdaQueryWrapper<AfterSale>()
@@ -404,7 +580,9 @@ public class AfterSalesService {
                 afterSale.getReturnCarrier(),
                 afterSale.getReturnTrackingNo(),
                 afterSale.getReturnShippedAt(),
+                afterSale.getReturnDueAt(),
                 afterSale.getReceivedAt(),
+                afterSale.getInspectDueAt(),
                 afterSale.getInspectResult(),
                 afterSale.getInspectNote(),
                 readList(afterSale.getInspectImagesJson()),

@@ -2,6 +2,8 @@ package com.kdshop.aftersales;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.kdshop.aftersales.dto.ApplyAfterSaleRequest;
+import com.kdshop.aftersales.dto.InspectRequest;
+import com.kdshop.aftersales.dto.ReturnShipmentRequest;
 import com.kdshop.aftersales.dto.ReviewAfterSaleRequest;
 import com.kdshop.aftersales.entity.AfterSale;
 import com.kdshop.aftersales.entity.AfterSaleLog;
@@ -10,12 +12,15 @@ import com.kdshop.aftersales.mapper.AfterSaleMapper;
 import com.kdshop.auth.mapper.UserMapper;
 import com.kdshop.catalog.entity.Shop;
 import com.kdshop.catalog.mapper.ShopMapper;
+import com.kdshop.catalog.mapper.SkuMapper;
 import com.kdshop.common.BusinessException;
 import com.kdshop.common.ErrorCode;
 import com.kdshop.config.MetaProperties;
 import com.kdshop.order.entity.MerchantOrder;
 import com.kdshop.order.entity.Order;
+import com.kdshop.order.entity.OrderItem;
 import com.kdshop.order.mapper.MerchantOrderMapper;
+import com.kdshop.order.mapper.OrderItemMapper;
 import com.kdshop.order.mapper.OrderMapper;
 import com.kdshop.refund.RefundService;
 import com.kdshop.refund.entity.Refund;
@@ -48,6 +53,8 @@ class AfterSalesServiceTest {
     @Mock private AfterSaleLogMapper logMapper;
     @Mock private MerchantOrderMapper merchantOrderMapper;
     @Mock private OrderMapper orderMapper;
+    @Mock private OrderItemMapper orderItemMapper;
+    @Mock private SkuMapper skuMapper;
     @Mock private ShopMapper shopMapper;
     @Mock private UserMapper userMapper;
     @Mock private RefundService refundService;
@@ -59,7 +66,7 @@ class AfterSalesServiceTest {
     @BeforeEach
     void setUp() {
         service = new AfterSalesService(afterSaleMapper, logMapper, merchantOrderMapper, orderMapper,
-                shopMapper, userMapper, refundService, new ObjectMapper(), meta);
+                orderItemMapper, skuMapper, shopMapper, userMapper, refundService, new ObjectMapper(), meta);
         SecurityContextHolder.getContext().setAuthentication(
                 UsernamePasswordAuthenticationToken.authenticated(1L, null, List.of()));
     }
@@ -202,6 +209,110 @@ class AfterSalesServiceTest {
                 .isInstanceOf(BusinessException.class)
                 .extracting(e -> ((BusinessException) e).errorCode())
                 .isEqualTo(ErrorCode.AFTER_SALES_STATE_INVALID);
+    }
+
+    @Test
+    void submitReturnStoresTracking() {
+        AfterSale afterSale = existing("RETURNING", "RETURN_REFUND");
+        when(afterSaleMapper.selectOne(any())).thenReturn(afterSale);
+
+        var view = service.submitReturn("AS20261116001", new ReturnShipmentRequest("顺丰", "SF1001"));
+
+        assertThat(view.returnCarrier()).isEqualTo("顺丰");
+        assertThat(view.returnTrackingNo()).isEqualTo("SF1001");
+        assertThat(view.returnShippedAt()).isNotNull();
+        verify(afterSaleMapper).updateById(afterSale);
+    }
+
+    @Test
+    void markReceivedStartsInspectCountdown() {
+        loginAsMerchant(shop(1L));
+        AfterSale afterSale = existing("RETURNING", "RETURN_REFUND");
+        afterSale.setReturnTrackingNo("SF1001");
+        when(afterSaleMapper.selectOne(any())).thenReturn(afterSale);
+
+        var view = service.markReceived("AS20261116001");
+
+        assertThat(view.status()).isEqualTo("RECEIVED");
+        assertThat(view.receivedAt()).isNotNull();
+        assertThat(view.inspectDueAt()).isNotNull();
+    }
+
+    @Test
+    void inspectGoodRestoresStockAndRefunds() {
+        loginAsMerchant(shop(1L));
+        AfterSale afterSale = existing("RECEIVED", "RETURN_REFUND");
+        when(afterSaleMapper.selectOne(any())).thenReturn(afterSale);
+        when(afterSaleMapper.update(any(), any())).thenReturn(1);
+        when(orderItemMapper.selectList(any())).thenReturn(List.of(item(3L, 2)));
+        when(merchantOrderMapper.selectById(9L)).thenReturn(sub("COMPLETED", LocalDateTime.now(), 12800));
+        Refund refund = new Refund();
+        refund.setRefundNo("RF20261116002");
+        when(refundService.executeForAfterSales(any(), eq(12800), anyString(), eq("MERCHANT"), eq(1L)))
+                .thenReturn(refund);
+
+        var view = service.inspect("AS20261116001", new InspectRequest("GOOD", "包装完好", List.of()));
+
+        assertThat(view.status()).isEqualTo("REFUNDED");
+        assertThat(view.refundNo()).isEqualTo("RF20261116002");
+        verify(skuMapper).restoreStock(3L, 2);
+    }
+
+    @Test
+    void inspectDefectiveRefundsWithoutRestoringStock() {
+        loginAsMerchant(shop(1L));
+        AfterSale afterSale = existing("RECEIVED", "RETURN_REFUND");
+        when(afterSaleMapper.selectOne(any())).thenReturn(afterSale);
+        when(afterSaleMapper.update(any(), any())).thenReturn(1);
+        when(merchantOrderMapper.selectById(9L)).thenReturn(sub("COMPLETED", LocalDateTime.now(), 12800));
+        Refund refund = new Refund();
+        refund.setRefundNo("RF20261116003");
+        when(refundService.executeForAfterSales(any(), eq(12800), anyString(), eq("MERCHANT"), eq(1L)))
+                .thenReturn(refund);
+
+        var view = service.inspect("AS20261116001", new InspectRequest("DEFECTIVE", "杯口磕碰", List.of()));
+
+        assertThat(view.status()).isEqualTo("REFUNDED");
+        assertThat(view.inspectResult()).isEqualTo("DEFECTIVE");
+        verify(skuMapper, never()).restoreStock(any(), anyInt());
+    }
+
+    @Test
+    void autoInspectAfterTimeoutTreatsAsGood() {
+        AfterSale afterSale = existing("RECEIVED", "RETURN_REFUND");
+        when(afterSaleMapper.selectById(1L)).thenReturn(afterSale);
+        when(afterSaleMapper.update(any(), any())).thenReturn(1);
+        when(orderItemMapper.selectList(any())).thenReturn(List.of(item(3L, 1)));
+        when(merchantOrderMapper.selectById(9L)).thenReturn(sub("COMPLETED", LocalDateTime.now(), 12800));
+        Refund refund = new Refund();
+        refund.setRefundNo("RF20261116004");
+        when(refundService.executeForAfterSales(any(), eq(12800), anyString(), eq("SYSTEM"), any()))
+                .thenReturn(refund);
+
+        assertThat(service.autoInspectGood(1L)).isTrue();
+        verify(skuMapper).restoreStock(3L, 1);
+        verify(refundService).executeForAfterSales(any(), eq(12800), anyString(), eq("SYSTEM"), any());
+    }
+
+    @Test
+    void overdueReturnIsClosedOnlyWhenTrackingMissing() {
+        AfterSale afterSale = existing("RETURNING", "RETURN_REFUND");
+        when(afterSaleMapper.selectById(1L)).thenReturn(afterSale);
+        when(afterSaleMapper.update(any(), any())).thenReturn(1);
+
+        assertThat(service.closeOverdueReturn(1L)).isTrue();
+
+        AfterSale shipped = existing("RETURNING", "RETURN_REFUND");
+        shipped.setReturnTrackingNo("SF1001");
+        when(afterSaleMapper.selectById(1L)).thenReturn(shipped);
+        assertThat(service.closeOverdueReturn(1L)).isFalse();
+    }
+
+    private OrderItem item(Long skuId, int quantity) {
+        OrderItem item = new OrderItem();
+        item.setSkuId(skuId);
+        item.setQuantity(quantity);
+        return item;
     }
 
     private void stubOrderAndSub(String subStatus, LocalDateTime completedAt, String orderType) {

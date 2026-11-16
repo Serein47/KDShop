@@ -2,6 +2,8 @@ package com.kdshop.aftersales;
 
 import com.kdshop.aftersales.dto.AfterSaleView;
 import com.kdshop.aftersales.dto.ApplyAfterSaleRequest;
+import com.kdshop.aftersales.dto.InspectRequest;
+import com.kdshop.aftersales.dto.ReturnShipmentRequest;
 import com.kdshop.aftersales.dto.ReviewAfterSaleRequest;
 import com.kdshop.common.ApiResponse;
 import jakarta.validation.Valid;
@@ -48,6 +50,12 @@ public class AfterSalesController {
         return ApiResponse.ok(afterSalesService.reapply(asNo, request));
     }
 
+    @PostMapping("/me/after-sales/{asNo}/return")
+    public ApiResponse<AfterSaleView> submitReturn(@PathVariable String asNo,
+                                                   @Valid @RequestBody ReturnShipmentRequest request) {
+        return ApiResponse.ok(afterSalesService.submitReturn(asNo, request));
+    }
+
     @GetMapping("/merchant/after-sales")
     public ApiResponse<List<AfterSaleView>> merchantList(@RequestParam(required = false) String status) {
         return ApiResponse.ok(afterSalesService.listForMerchant(status));
@@ -62,6 +70,17 @@ public class AfterSalesController {
     public ApiResponse<AfterSaleView> review(@PathVariable String asNo,
                                              @Valid @RequestBody ReviewAfterSaleRequest request) {
         return ApiResponse.ok(afterSalesService.review(asNo, request));
+    }
+
+    @PostMapping("/merchant/after-sales/{asNo}/received")
+    public ApiResponse<AfterSaleView> received(@PathVariable String asNo) {
+        return ApiResponse.ok(afterSalesService.markReceived(asNo));
+    }
+
+    @PostMapping("/merchant/after-sales/{asNo}/inspect")
+    public ApiResponse<AfterSaleView> inspect(@PathVariable String asNo,
+                                              @Valid @RequestBody InspectRequest request) {
+        return ApiResponse.ok(afterSalesService.inspect(asNo, request));
     }
 
     @GetMapping("/admin/after-sales")

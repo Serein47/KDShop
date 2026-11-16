@@ -37,7 +37,9 @@ export interface AfterSale {
   returnCarrier?: string
   returnTrackingNo?: string
   returnShippedAt?: string
+  returnDueAt?: string
   receivedAt?: string
+  inspectDueAt?: string
   inspectResult?: 'GOOD' | 'DEFECTIVE'
   inspectNote?: string
   inspectImages: string[]
@@ -123,6 +125,37 @@ export async function reviewAfterSale(
   const { data } = await http.post<ApiResponse<AfterSale>>(`/merchant/after-sales/${asNo}/review`, {
     approve,
     reason,
+  })
+  return data.data
+}
+
+export async function submitReturn(
+  asNo: string,
+  carrier: string,
+  trackingNo: string,
+): Promise<AfterSale> {
+  const { data } = await http.post<ApiResponse<AfterSale>>(`/me/after-sales/${asNo}/return`, {
+    carrier,
+    trackingNo,
+  })
+  return data.data
+}
+
+export async function markAfterSaleReceived(asNo: string): Promise<AfterSale> {
+  const { data } = await http.post<ApiResponse<AfterSale>>(`/merchant/after-sales/${asNo}/received`)
+  return data.data
+}
+
+export async function inspectAfterSale(
+  asNo: string,
+  result: 'GOOD' | 'DEFECTIVE',
+  note?: string,
+  images?: string[],
+): Promise<AfterSale> {
+  const { data } = await http.post<ApiResponse<AfterSale>>(`/merchant/after-sales/${asNo}/inspect`, {
+    result,
+    note,
+    images,
   })
   return data.data
 }
