@@ -11,6 +11,7 @@ import {
 } from '@/api/order'
 import { createPayment } from '@/api/payment'
 import { applyRefund } from '@/api/refund'
+import AfterSaleApplyDialog from '@/components/AfterSaleApplyDialog.vue'
 import { createReview, fetchMyReviews } from '@/api/review'
 import { useAuthStore } from '@/stores/auth'
 import { yuan } from '@/api/catalog'
@@ -40,6 +41,8 @@ const reviewDialog = ref(false)
 const reviewItem = ref<{ id: number; name: string } | null>(null)
 const reviewRating = ref(5)
 const reviewContent = ref('')
+const afterSaleOpen = ref(false)
+const afterSaleSubNo = ref('')
 
 const orderNo = computed(() => String(route.params.orderNo ?? ''))
 const isPreorder = computed(() => !!order.value && order.value.orderType !== 'NORMAL')
@@ -120,6 +123,11 @@ function openRefund(sub: SubOrderView) {
   refundSub.value = sub
   refundReason.value = ''
   refundDialog.value = true
+}
+
+function openAfterSale(sub: SubOrderView) {
+  afterSaleSubNo.value = sub.subOrderNo
+  afterSaleOpen.value = true
 }
 
 async function submitRefund() {
@@ -301,11 +309,18 @@ function actorLabel(actor: string): string {
               <div class="sub__right">
                 <span>子单实付 <strong>¥{{ yuan(sub.payAmount) }}</strong></span>
                 <button
-                  v-if="['PENDING_SHIPMENT', 'SHIPPED', 'COMPLETED'].includes(sub.status)"
+                  v-if="['PENDING_SHIPMENT', 'SHIPPED'].includes(sub.status)"
                   class="btn btn--ghost btn--sm"
                   @click="openRefund(sub)"
                 >
                   申请退款
+                </button>
+                <button
+                  v-if="sub.status === 'COMPLETED'"
+                  class="btn btn--ghost btn--sm"
+                  @click="openAfterSale(sub)"
+                >
+                  申请售后
                 </button>
                 <button
                   v-if="sub.actions.includes('CONFIRM')"
@@ -391,6 +406,15 @@ function actorLabel(actor: string): string {
           <button class="btn btn--solid" :disabled="busy" @click="submitRefund">提交申请</button>
         </template>
       </el-dialog>
+
+      <AfterSaleApplyDialog
+        v-model="afterSaleOpen"
+        mode="apply"
+        :order-no="order.orderNo"
+        :sub-order-no="afterSaleSubNo"
+        :custom-only="order.orderType === 'CUSTOM'"
+        @submitted="load"
+      />
     </template>
   </div>
 </template>

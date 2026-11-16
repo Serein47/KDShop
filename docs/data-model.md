@@ -78,7 +78,7 @@ erDiagram
 |---|---|---|
 | `cart_items` | id, user_id, sku_id, quantity | `uk_cart_user_sku` |
 | `orders` | id, order_no, user_id, status, merchant_count, goods_amount_cent, discount_cent, shipping_fee_cent, pay_amount_cent, address_json, coupon_id, remark, order_type(NORMAL/PREORDER/CUSTOM), deposit_cent, balance_cent, promised_ship_at, balance_notified_at, balance_due_at, balance_paid_at, paid_at, completed_at, cancelled_at, cancel_reason, version | `uk_orders_no`、`idx_orders_user_status`、`idx_orders_status_created` |
-| `merchant_orders` | id, sub_order_no, order_id, merchant_id, status, goods_amount_cent, discount_cent, shipping_fee_cent, pay_amount_cent, refunded_amount_cent, promised_ship_at, shipped_at, completed_at, settled | `uk_mo_no`、`idx_mo_merchant_status`、`idx_mo_order` |
+| `merchant_orders` | id, sub_order_no, order_id, merchant_id, status, goods_amount_cent, discount_cent, shipping_fee_cent, pay_amount_cent, refunded_amount_cent, promised_ship_at, after_sales_frozen, shipped_at, completed_at, settled | `uk_mo_no`、`idx_mo_merchant_status`、`idx_mo_order` |
 | `order_items` | id, merchant_order_id, order_id, merchant_id, sku_id, product_id, product_name, shop_name, sku_spec, unit_price_cent, quantity, subtotal_cent | `idx_oi_mo`、`idx_oi_product` |
 | `payments` | id, payment_no, order_id, channel(MOCK), amount_cent, status, purpose(FULL/DEPOSIT/BALANCE), out_trade_no, paid_at, callback_at, callback_raw | `uk_payments_out_trade_no`、`uk_payments_no` |
 | `refunds` | id, refund_no, merchant_order_id, order_id, merchant_id, amount_cent, reason, status, reject_reason, operator_type(MERCHANT/SUPPORT), operator_id, finished_at | `uk_refunds_no`、`idx_refunds_merchant` |
@@ -130,7 +130,7 @@ erDiagram
 | `products`（加列） | `sale_mode`(IN_STOCK/PREORDER/CUSTOM)、`lead_days`、`deposit_rate`(基点) |
 | `orders`（加列） | `order_type`、`deposit_cent`、`balance_cent`、`promised_ship_at`、`penalty_cent` |
 | `payments`（加列） | `purpose`(FULL/DEPOSIT/BALANCE) |
-| `after_sales` | as_no、merchant_order_id、type(REFUND_ONLY/RETURN_REFUND)、reason_code、evidence_json、status、refund_amount_cent、return_*、received_at、inspect_result(GOOD/DEFECTIVE)、responsibility(MERCHANT/LOGISTICS/CUSTOMER) |
+| `after_sales` | as_no、merchant_order_id、type(REFUND_ONLY/RETURN_REFUND)、reason_code、evidence_json、status、refund_amount_cent、refund_no、return_*、received_at、inspect_result(GOOD/DEFECTIVE)、inspect_note、inspect_images_json、responsibility(MERCHANT/LOGISTICS/CUSTOMER)、verdict_note、reject_reason、reapply_count | `uk_after_sales_no`、`idx_after_sales_merchant_status` |
 | `after_sales_logs` | 售后状态流水 |
 | `penalties` | 赔付单：merchant_order_id + days_overdue 唯一，防止重复计赔 |
 

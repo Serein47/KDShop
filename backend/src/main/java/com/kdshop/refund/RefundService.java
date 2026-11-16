@@ -211,6 +211,42 @@ public class RefundService {
         return toView(refund, sub, order);
     }
 
+    /**
+     * 售后流程通过后的退款执行：直接落一条已完成退款，更新子单已退金额与主单状态。
+     * 由 AfterSalesService 调用，不再经过商家二次审核。
+     */
+    @Transactional
+    public Refund executeForAfterSales(MerchantOrder sub, int amountCent, String reason,
+                                       String operatorType, Long operatorId) {
+        LocalDateTime now = LocalDateTime.now();
+        Refund refund = new Refund();
+        refund.setRefundNo("RF" + now.format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss"))
+                + String.format("%03d", ThreadLocalRandom.current().nextInt(1000)));
+        refund.setMerchantOrderId(sub.getId());
+        refund.setOrderId(sub.getOrderId());
+        refund.setMerchantId(sub.getMerchantId());
+        refund.setAmountCent(amountCent);
+        refund.setReason(reason);
+        refund.setStatus("REFUNDED");
+        refund.setFinishedAt(now);
+        refund.setOperatorType(operatorType);
+        refund.setOperatorId(operatorId);
+        refundMapper.insert(refund);
+
+        int refunded = (sub.getRefundedAmountCent() == null ? 0 : sub.getRefundedAmountCent()) + amountCent;
+        MerchantOrder patch = new MerchantOrder();
+        patch.setId(sub.getId());
+        patch.setRefundedAmountCent(refunded);
+        patch.setStatus(refunded >= sub.getPayAmountCent() ? "REFUNDED" : "PARTIALLY_REFUNDED");
+        merchantOrderMapper.updateById(patch);
+        refreshOrder(sub.getOrderId());
+
+        Order order = orderMapper.selectById(sub.getOrderId());
+        writeLog(refund, "REFUNDED");
+        notify(order, refund, "退款已完成", now);
+        return refund;
+    }
+
     public List<RefundView> listAll(String status) {
         requireAdmin();
         LambdaQueryWrapper<Refund> query = new LambdaQueryWrapper<Refund>()

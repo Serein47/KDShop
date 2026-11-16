@@ -141,6 +141,30 @@ stateDiagram-v2
 - 审核人：商家；平台客服可强制同意（纠纷介入），需记录原因
 - 部分退款、单行退款首版不做
 
+## 售后（子单完成后）
+
+```mermaid
+stateDiagram-v2
+    [*] --> APPLIED
+    APPLIED --> APPROVED : 商家同意
+    APPROVED --> REFUNDED : 仅退款，立即退款
+    APPROVED --> RETURNING : 退货退款，等待寄回
+    RETURNING --> RECEIVED : 商家确认收货（ISSUE-38）
+    RECEIVED --> INSPECTED : 提交质检（ISSUE-38）
+    INSPECTED --> REFUNDED : 退款
+    APPLIED --> REJECTED : 驳回（需原因）
+    REJECTED --> APPLIED : 补充证据一次
+    APPLIED --> ESCALATED : 商家超时（退货退款，ISSUE-39）
+    ESCALATED --> REFUNDED : 平台裁决
+    ESCALATED --> REJECTED : 平台裁决
+    RETURNING --> CLOSED : 7 天未寄回（ISSUE-38）
+```
+
+- 申请窗口：子单 `COMPLETED` 后 15 天内；定制订单原因只接受「质量问题 / 与描述不符」
+- 一个子单同时只有一条售后单；被驳回后可用同一条记录补充证据一次
+- 退款金额 = 子单实付 − 已退金额（整子单），底层复用旧退款执行与结算口径
+- 未完成子单仍走旧的整单退款，完成后统一走售后单
+
 ## 结算
 
 ```mermaid

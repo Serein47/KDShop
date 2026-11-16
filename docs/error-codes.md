@@ -60,6 +60,12 @@
 | 40019 | SUB_ORDER_STATE_INVALID | 子单当前状态不允许该操作 | 409 |
 | 40020 | SETTLEMENT_EXISTS | 该商家该周期已生成结算单 | 409 |
 | 40021 | SETTLEMENT_NOT_ELIGIBLE | 子单未满足结算条件 | 409 |
+| 40022 | SHOP_NOT_FOUND | 店铺不存在 | 404 |
+| 40023 | SHOP_NAME_TAKEN | 店铺名称已被使用 | 409 |
+| 40024 | SHOP_STATE_INVALID | 店铺当前状态不允许该操作 | 409 |
+| 40025 | AFTER_SALES_STATE_INVALID | 售后单当前状态不允许该操作 | 409 |
+| 40026 | AFTER_SALES_NOT_ELIGIBLE | 该子单不满足售后申请条件 | 409 |
+| 40027 | AFTER_SALES_EXISTS | 该子单已有售后单 | 409 |
 | 30003 | MERCHANT_SCOPE_FORBIDDEN | 访问了非本店资源 | 403 |
 | 50001 | INTERNAL_ERROR | 系统异常（不回显堆栈） | 500 |
 | 50002 | UPSTREAM_TIMEOUT | 下游超时 | 504 |

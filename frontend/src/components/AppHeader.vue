@@ -56,6 +56,7 @@ function search() {
           <RouterLink to="/merchant/shop" @click="merchantOpen = false">店铺概览</RouterLink>
           <RouterLink to="/merchant/products" @click="merchantOpen = false">商品管理</RouterLink>
           <RouterLink to="/merchant/orders" @click="merchantOpen = false">本店订单</RouterLink>
+          <RouterLink to="/merchant/after-sales" @click="merchantOpen = false">售后处理</RouterLink>
           <RouterLink to="/merchant/refunds" @click="merchantOpen = false">退款处理</RouterLink>
           <RouterLink to="/merchant/settlements" @click="merchantOpen = false">结算单</RouterLink>
         </div>
@@ -66,6 +67,7 @@ function search() {
         <RouterLink v-if="!auth.user" to="/login" class="login-link">登录</RouterLink>
         <template v-else>
           <RouterLink to="/orders" class="order-link">我的订单</RouterLink>
+          <RouterLink to="/after-sales" class="order-link">售后</RouterLink>
           <RouterLink to="/account" class="nick">{{ auth.user.nickname }}</RouterLink>
           <button class="logout" @click="auth.logout()">退出</button>
         </template>
