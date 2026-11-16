@@ -21,6 +21,21 @@ const loading = ref(true)
 const showForm = ref(false)
 const form = ref({ receiver: '', phone: '', province: '', city: '', district: '', detail: '' })
 const submitting = ref(false)
+const flawAck = ref(false)
+
+const needsFlawAck = computed(() =>
+  (preview.value?.subOrders ?? []).some((sub) => sub.items.some((line) => line.requiresFlawAck)),
+)
+
+const flawNotes = computed(() => {
+  const notes = new Set<string>()
+  for (const sub of preview.value?.subOrders ?? []) {
+    for (const line of sub.items) {
+      if (line.requiresFlawAck && line.flawNote) notes.add(line.flawNote)
+    }
+  }
+  return [...notes]
+})
 
 /**
  * HTTP 环境（非 localhost）不是安全上下文，crypto.randomUUID 不存在，
@@ -110,10 +125,18 @@ const paying = ref(false)
 
 async function placeOrder() {
   if (!addressId.value || !preview.value) return
+  if (needsFlawAck.value && !flawAck.value) {
+    ElMessage.warning('请先确认商品的手作痕迹说明')
+    return
+  }
   submitting.value = true
   try {
     const result = await createOrder(
-      { addressId: addressId.value, couponId: couponId.value },
+      {
+        addressId: addressId.value,
+        couponId: couponId.value,
+        flawAck: needsFlawAck.value ? true : undefined,
+      },
       idempotencyKey(),
     )
     created.value = { orderNo: result.orderNo, payAmount: result.payAmount }
@@ -214,6 +237,18 @@ async function placeOrder() {
           </div>
         </section>
 
+        <section v-if="needsFlawAck" class="block flaw">
+          <div class="block__head">
+            <h2>手作痕迹确认</h2>
+            <span class="muted">必须确认后才能下单</span>
+          </div>
+          <p v-for="note in flawNotes" :key="note" class="flaw__note">{{ note }}</p>
+          <label class="flaw__ack">
+            <input v-model="flawAck" type="checkbox" />
+            我已了解手作痕迹，接受商品可能与图片略有不同
+          </label>
+        </section>
+
         <section class="block">
           <div class="block__head">
             <h2>优惠券</h2>
@@ -253,7 +288,8 @@ async function placeOrder() {
           <div class="row"><span>尾款（发货前支付）</span><span>¥{{ yuan(preview.summary.balance) }}</span></div>
         </template>
 
-        <button class="btn btn--solid submit" :disabled="!addressId || submitting" @click="placeOrder">
+        <button class="btn btn--solid submit"
+          :disabled="!addressId || submitting || (needsFlawAck && !flawAck)" @click="placeOrder">
           {{ submitting ? '提交中…' : addressId ? (isPreorder ? '提交并支付定金' : '提交订单') : '请选择收货地址' }}
         </button>
         <p class="hint">
@@ -346,6 +382,10 @@ async function placeOrder() {
 .row.total strong { font-size: 26px; color: var(--rust); }
 .row.deposit { color: var(--ink); padding-top: 12px; }
 .row.deposit span:last-child { color: var(--rust); font-weight: 600; }
+.flaw { border-left: 3px solid var(--rust); }
+.flaw__note { font-size: 13px; color: var(--ink-soft); line-height: 1.8; margin: 0 0 8px; }
+.flaw__ack { display: flex; gap: 8px; align-items: flex-start; font-size: 13px; color: var(--ink); cursor: pointer; }
+.flaw__ack input { margin-top: 3px; }
 .submit { width: 100%; justify-content: center; margin-top: 18px; }
 .hint { font-size: 11px; color: var(--muted); margin-top: 10px; line-height: 1.6; }
 .state { padding: 90px 0; text-align: center; color: var(--muted); }

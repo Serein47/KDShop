@@ -29,6 +29,8 @@ export interface PreviewLine {
   price: number
   quantity: number
   subtotal: number
+  requiresFlawAck: boolean
+  flawNote?: string | null
 }
 
 export interface PreviewSubOrder {

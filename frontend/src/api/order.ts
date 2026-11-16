@@ -13,6 +13,10 @@ export async function createOrder(payload: {
   couponId?: number
   items?: { skuId: number; quantity: number }[]
   remark?: string
+  isGift?: boolean
+  giftMessage?: string
+  giftWrap?: boolean
+  flawAck?: boolean
 }, idempotencyKey: string): Promise<CreatedOrder> {
   const { data } = await http.post<ApiResponse<CreatedOrder>>('/orders', payload, {
     headers: { 'Idempotency-Key': idempotencyKey },
@@ -73,6 +77,7 @@ export interface OrderItemView {
   price: number
   quantity: number
   subtotal: number
+  flawAck: boolean
 }
 
 export interface SubOrderView {

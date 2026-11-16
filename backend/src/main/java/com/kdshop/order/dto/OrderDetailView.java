@@ -51,7 +51,8 @@ public record OrderDetailView(
             Map<String, String> spec,
             int price,
             int quantity,
-            int subtotal
+            int subtotal,
+            boolean flawAck
     ) {
     }
 

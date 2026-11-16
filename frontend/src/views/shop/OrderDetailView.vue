@@ -284,6 +284,7 @@ function actorLabel(actor: string): string {
                 <div class="item__main">
                   <p>{{ item.name }}</p>
                   <span>{{ specText(item.spec) }} · ¥{{ yuan(item.price) }} × {{ item.quantity }}</span>
+                  <span v-if="item.flawAck" class="flaw-tag">已确认手工痕迹</span>
                 </div>
                 <strong>¥{{ yuan(item.subtotal) }}</strong>
                 <button v-if="sub.status === 'COMPLETED' && !reviewed.has(item.id)" class="btn btn--ghost btn--sm item__review" @click="openReview(item)">评价</button>
@@ -493,6 +494,7 @@ function actorLabel(actor: string): string {
 .item__main { min-width: 0; flex: 1; }
 .item__main p { margin: 0; font-size: 14px; }
 .item__main span { color: var(--muted); font-size: 12px; }
+.flaw-tag { margin-left: 8px; color: var(--rust); border: 1px solid var(--rust); border-radius: 999px; padding: 1px 7px; font-size: 10px; }
 .item strong { font-size: 13px; white-space: nowrap; }
 
 .sub__foot { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding-top: 14px; flex-wrap: wrap; }

@@ -101,6 +101,13 @@ public class OrderService {
         CheckoutPreview preview = checkoutService.preview(new CheckoutRequest(
                 request.addressId(), request.couponId(), checkoutItems));
 
+        boolean requiresFlawAck = preview.subOrders().stream()
+                .flatMap(sub -> sub.items().stream())
+                .anyMatch(CheckoutPreview.Line::requiresFlawAck);
+        if (requiresFlawAck && !Boolean.TRUE.equals(request.flawAck())) {
+            throw new BusinessException(ErrorCode.PARAM_INVALID, "请先确认商品的手作痕迹说明");
+        }
+
         for (CheckoutPreview.SubOrder sub : preview.subOrders()) {
             for (CheckoutPreview.Line line : sub.items()) {
                 int locked = skuMapper.lockStock(line.skuId(), line.quantity());
@@ -163,6 +170,7 @@ public class OrderService {
                 item.setUnitPriceCent(line.price());
                 item.setQuantity(line.quantity());
                 item.setSubtotalCent(line.subtotal());
+                item.setFlawAck(line.requiresFlawAck() ? 1 : 0);
                 orderItemMapper.insert(item);
             }
 

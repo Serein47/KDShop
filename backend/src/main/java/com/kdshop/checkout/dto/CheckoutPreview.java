@@ -28,7 +28,9 @@ public record CheckoutPreview(
             Map<String, String> spec,
             int price,
             int quantity,
-            int subtotal
+            int subtotal,
+            boolean requiresFlawAck,
+            String flawNote
     ) {
     }
 
