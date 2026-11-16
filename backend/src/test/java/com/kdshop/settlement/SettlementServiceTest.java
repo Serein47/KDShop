@@ -11,6 +11,8 @@ import com.kdshop.order.entity.MerchantOrder;
 import com.kdshop.order.mapper.MerchantOrderMapper;
 import com.kdshop.penalty.entity.Penalty;
 import com.kdshop.penalty.mapper.PenaltyMapper;
+import com.kdshop.refund.entity.Refund;
+import com.kdshop.refund.mapper.RefundMapper;
 import com.kdshop.settlement.entity.Settlement;
 import com.kdshop.settlement.entity.SettlementItem;
 import com.kdshop.settlement.mapper.SettlementItemMapper;
@@ -45,13 +47,14 @@ class SettlementServiceTest {
     @Mock private UserRoleMapper userRoleMapper;
     @Mock private RoleMapper roleMapper;
     @Mock private PenaltyMapper penaltyMapper;
+    @Mock private RefundMapper refundMapper;
 
     private SettlementService service;
 
     @BeforeEach
     void setUp() {
         service = new SettlementService(settlementMapper, itemMapper, merchantOrderMapper, shopMapper,
-                userRoleMapper, roleMapper, penaltyMapper);
+                userRoleMapper, roleMapper, penaltyMapper, refundMapper);
         SecurityContextHolder.getContext().setAuthentication(
                 UsernamePasswordAuthenticationToken.authenticated(8L, null, List.of()));
     }
@@ -113,6 +116,64 @@ class SettlementServiceTest {
         assertThat(captor.getValue().getPenaltyCent()).isEqualTo(500);
         assertThat(captor.getValue().getNetAmountCent()).isEqualTo(23820);
         verify(penaltyMapper).update(any(), any());
+    }
+
+    @Test
+    void frozenSubOrderIsExcludedFromSettlement() {
+        when(roleMapper.selectOne(any())).thenReturn(role("ADMIN"));
+        when(userRoleMapper.selectCount(any())).thenReturn(1L);
+        when(shopMapper.selectList(any())).thenReturn(List.of(shop(1L, 500)));
+        when(settlementMapper.selectCount(any())).thenReturn(0L);
+        MerchantOrder sub = completedSub(9L, 25600);
+        sub.setAfterSalesFrozen(1);
+        when(merchantOrderMapper.selectList(any())).thenReturn(List.of(sub));
+
+        var views = service.generate(LocalDate.now().minusDays(7), LocalDate.now());
+
+        assertThat(views).isEmpty();
+        verify(settlementMapper, org.mockito.Mockito.never()).insert(any(Settlement.class));
+    }
+
+    @Test
+    void detailIncludesRefundAndPenaltyLines() {
+        Settlement settlement = settlement(1L, 500);
+        when(settlementMapper.selectOne(any())).thenReturn(settlement);
+        when(roleMapper.selectOne(any())).thenReturn(null);
+        when(shopMapper.selectOne(any())).thenReturn(shop(1L, 500));
+        when(shopMapper.selectById(1L)).thenReturn(shop(1L, 500));
+
+        SettlementItem item = new SettlementItem();
+        item.setSettlementId(settlement.getId());
+        item.setMerchantOrderId(9L);
+        item.setGrossAmountCent(25600);
+        item.setCommissionCent(1280);
+        item.setRefundCent(500);
+        item.setPenaltyCent(500);
+        item.setNetAmountCent(23320);
+        when(itemMapper.selectList(any())).thenReturn(List.of(item));
+
+        MerchantOrder sub = completedSub(9L, 25600);
+        sub.setSubOrderNo("KD202611160001-1");
+        when(merchantOrderMapper.selectBatchIds(any())).thenReturn(List.of(sub));
+
+        Refund refund = new Refund();
+        refund.setRefundNo("RF20261116001");
+        refund.setAmountCent(500);
+        refund.setReason("质量问题");
+        refund.setStatus("REFUNDED");
+        when(refundMapper.selectList(any())).thenReturn(List.of(refund));
+
+        Penalty penalty = penalty(9L, 1, 250);
+        penalty.setPenaltyNo("PN9-1");
+        penalty.setStatus("SETTLED");
+        when(penaltyMapper.selectList(any())).thenReturn(List.of(penalty));
+
+        var detail = service.detail("ST20261116001");
+
+        assertThat(detail.items().get(0).refunds()).hasSize(1);
+        assertThat(detail.items().get(0).refunds().get(0).refundNo()).isEqualTo("RF20261116001");
+        assertThat(detail.items().get(0).penalties()).hasSize(1);
+        assertThat(detail.items().get(0).penalties().get(0).penaltyNo()).isEqualTo("PN9-1");
     }
 
     @Test

@@ -75,7 +75,17 @@ async function openDetail(item: Settlement) {
               <td>¥{{ yuan(line.grossAmount) }}</td>
               <td>-¥{{ yuan(line.commission) }}</td>
               <td>-¥{{ yuan(line.refund) }}</td>
-              <td :class="{ penalty: line.penalty }">-¥{{ yuan(line.penalty) }}</td>
+              <td :class="{ penalty: line.penalty }">
+                -¥{{ yuan(line.penalty) }}
+                <div v-if="line.penalties.length || line.refunds.length" class="drill">
+                  <p v-for="p in line.penalties" :key="p.penaltyNo">
+                    {{ p.penaltyNo }} · 第 {{ p.daysOverdue }} 天 · ¥{{ yuan(p.amount) }}
+                  </p>
+                  <p v-for="r in line.refunds" :key="r.refundNo">
+                    {{ r.refundNo }} · 退款 ¥{{ yuan(r.amount) }}
+                  </p>
+                </div>
+              </td>
               <td><strong>¥{{ yuan(line.netAmount) }}</strong></td>
             </tr>
           </tbody>
@@ -96,6 +106,8 @@ th { color: var(--muted); font-weight: 500; }
 .row { cursor: pointer; }
 .row:hover { background: #fbf7f1; }
 td.penalty { color: var(--rust); }
+.drill { margin-top: 4px; font-size: 11px; color: var(--muted); line-height: 1.5; }
+.drill p { margin: 0; }
 .summary { font-size: 13px; color: var(--ink-soft); margin: 0 0 12px; }
 .detail { box-shadow: none; border: 1px solid var(--line); }
 .state { color: var(--muted); padding: 40px 0; }

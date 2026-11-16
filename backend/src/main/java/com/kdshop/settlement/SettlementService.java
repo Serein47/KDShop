@@ -15,6 +15,10 @@ import com.kdshop.order.entity.MerchantOrder;
 import com.kdshop.order.mapper.MerchantOrderMapper;
 import com.kdshop.penalty.entity.Penalty;
 import com.kdshop.penalty.mapper.PenaltyMapper;
+import com.kdshop.refund.entity.Refund;
+import com.kdshop.refund.mapper.RefundMapper;
+import com.kdshop.settlement.dto.PenaltyLineView;
+import com.kdshop.settlement.dto.RefundLineView;
 import com.kdshop.settlement.dto.SettlementDetailView;
 import com.kdshop.settlement.dto.SettlementItemView;
 import com.kdshop.settlement.dto.SettlementView;
@@ -46,6 +50,7 @@ public class SettlementService {
     private final UserRoleMapper userRoleMapper;
     private final RoleMapper roleMapper;
     private final PenaltyMapper penaltyMapper;
+    private final RefundMapper refundMapper;
 
     @Autowired(required = false)
     private AuditService auditService;
@@ -53,7 +58,7 @@ public class SettlementService {
     public SettlementService(SettlementMapper settlementMapper, SettlementItemMapper itemMapper,
                              MerchantOrderMapper merchantOrderMapper, ShopMapper shopMapper,
                              UserRoleMapper userRoleMapper, RoleMapper roleMapper,
-                             PenaltyMapper penaltyMapper) {
+                             PenaltyMapper penaltyMapper, RefundMapper refundMapper) {
         this.settlementMapper = settlementMapper;
         this.itemMapper = itemMapper;
         this.merchantOrderMapper = merchantOrderMapper;
@@ -61,6 +66,7 @@ public class SettlementService {
         this.userRoleMapper = userRoleMapper;
         this.roleMapper = roleMapper;
         this.penaltyMapper = penaltyMapper;
+        this.refundMapper = refundMapper;
     }
 
     @Transactional
@@ -84,11 +90,15 @@ public class SettlementService {
                 continue;
             }
             List<MerchantOrder> subs = merchantOrderMapper.selectList(new LambdaQueryWrapper<MerchantOrder>()
-                    .eq(MerchantOrder::getMerchantId, shop.getId())
-                    .eq(MerchantOrder::getStatus, "COMPLETED")
-                    .eq(MerchantOrder::getSettled, 0)
-                    .ge(MerchantOrder::getCompletedAt, from)
-                    .lt(MerchantOrder::getCompletedAt, to));
+                            .eq(MerchantOrder::getMerchantId, shop.getId())
+                            .eq(MerchantOrder::getStatus, "COMPLETED")
+                            .eq(MerchantOrder::getSettled, 0)
+                            .ge(MerchantOrder::getCompletedAt, from)
+                            .lt(MerchantOrder::getCompletedAt, to))
+                    // 售后中的子单冻结结算，等关闭（解冻）或退款（直接冲抵）后再进入下一期
+                    .stream()
+                    .filter(sub -> sub.getAfterSalesFrozen() == null || sub.getAfterSalesFrozen() == 0)
+                    .toList();
             if (subs.isEmpty()) {
                 continue;
             }
@@ -246,10 +256,30 @@ public class SettlementService {
                         .stream()
                         .collect(Collectors.toMap(MerchantOrder::getId, MerchantOrder::getSubOrderNo));
         List<SettlementItemView> views = items.stream()
-                .map(item -> new SettlementItemView(
-                        subOrderNos.getOrDefault(item.getMerchantOrderId(), ""),
-                        nvl(item.getGrossAmountCent()), nvl(item.getCommissionCent()),
-                        nvl(item.getRefundCent()), nvl(item.getPenaltyCent()), nvl(item.getNetAmountCent())))
+                .map(item -> {
+                    List<RefundLineView> refunds = refundMapper.selectList(new LambdaQueryWrapper<Refund>()
+                                    .eq(Refund::getMerchantOrderId, item.getMerchantOrderId())
+                                    .eq(Refund::getStatus, "REFUNDED")
+                                    .orderByAsc(Refund::getId))
+                            .stream()
+                            .map(refund -> new RefundLineView(refund.getRefundNo(),
+                                    nvl(refund.getAmountCent()), refund.getReason(), refund.getFinishedAt()))
+                            .toList();
+                    List<PenaltyLineView> penalties = penaltyMapper.selectList(new LambdaQueryWrapper<Penalty>()
+                                    .eq(Penalty::getMerchantOrderId, item.getMerchantOrderId())
+                                    .eq(Penalty::getStatus, "SETTLED")
+                                    .orderByAsc(Penalty::getDaysOverdue))
+                            .stream()
+                            .map(penalty -> new PenaltyLineView(penalty.getPenaltyNo(),
+                                    nvl(penalty.getDaysOverdue()), nvl(penalty.getAmountCent()),
+                                    penalty.getCreatedAt()))
+                            .toList();
+                    return new SettlementItemView(
+                            subOrderNos.getOrDefault(item.getMerchantOrderId(), ""),
+                            nvl(item.getGrossAmountCent()), nvl(item.getCommissionCent()),
+                            nvl(item.getRefundCent()), nvl(item.getPenaltyCent()),
+                            nvl(item.getNetAmountCent()), refunds, penalties);
+                })
                 .toList();
         return new SettlementDetailView(toView(settlement, shop, items.size()), views);
     }
