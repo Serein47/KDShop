@@ -26,6 +26,7 @@ public class AfterSale {
     private String evidenceJson;
     /** APPLIED/APPROVED/REJECTED/RETURNING/RECEIVED/INSPECTED/REFUNDED/CLOSED/ESCALATED */
     private String status;
+    private LocalDateTime reviewDueAt;
     private Integer refundAmountCent;
     private String refundNo;
     private String returnCarrier;

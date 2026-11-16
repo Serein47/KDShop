@@ -160,6 +160,25 @@ export async function inspectAfterSale(
   return data.data
 }
 
+export async function fetchAdminAfterSales(status?: string): Promise<AfterSale[]> {
+  const { data } = await http.get<ApiResponse<AfterSale[]>>('/admin/after-sales', { params: { status } })
+  return data.data
+}
+
+export async function verdictAfterSale(
+  asNo: string,
+  decision: 'APPROVE' | 'REJECT',
+  responsibility: 'MERCHANT' | 'LOGISTICS' | 'CUSTOMER',
+  note: string,
+): Promise<AfterSale> {
+  const { data } = await http.put<ApiResponse<AfterSale>>(`/admin/after-sales/${asNo}/verdict`, {
+    decision,
+    responsibility,
+    note,
+  })
+  return data.data
+}
+
 export async function uploadEvidence(file: File): Promise<string> {
   const form = new FormData()
   form.append('file', file)

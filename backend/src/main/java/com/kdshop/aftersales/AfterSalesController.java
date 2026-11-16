@@ -5,11 +5,13 @@ import com.kdshop.aftersales.dto.ApplyAfterSaleRequest;
 import com.kdshop.aftersales.dto.InspectRequest;
 import com.kdshop.aftersales.dto.ReturnShipmentRequest;
 import com.kdshop.aftersales.dto.ReviewAfterSaleRequest;
+import com.kdshop.aftersales.dto.VerdictRequest;
 import com.kdshop.common.ApiResponse;
 import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -86,5 +88,11 @@ public class AfterSalesController {
     @GetMapping("/admin/after-sales")
     public ApiResponse<List<AfterSaleView>> adminList(@RequestParam(required = false) String status) {
         return ApiResponse.ok(afterSalesService.listAll(status));
+    }
+
+    @PutMapping("/admin/after-sales/{asNo}/verdict")
+    public ApiResponse<AfterSaleView> verdict(@PathVariable String asNo,
+                                              @Valid @RequestBody VerdictRequest request) {
+        return ApiResponse.ok(afterSalesService.verdict(asNo, request));
     }
 }

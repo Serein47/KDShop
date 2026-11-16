@@ -5,11 +5,15 @@ import com.kdshop.aftersales.dto.ApplyAfterSaleRequest;
 import com.kdshop.aftersales.dto.InspectRequest;
 import com.kdshop.aftersales.dto.ReturnShipmentRequest;
 import com.kdshop.aftersales.dto.ReviewAfterSaleRequest;
+import com.kdshop.aftersales.dto.VerdictRequest;
 import com.kdshop.aftersales.entity.AfterSale;
 import com.kdshop.aftersales.entity.AfterSaleLog;
 import com.kdshop.aftersales.mapper.AfterSaleLogMapper;
 import com.kdshop.aftersales.mapper.AfterSaleMapper;
+import com.kdshop.auth.entity.Role;
+import com.kdshop.auth.mapper.RoleMapper;
 import com.kdshop.auth.mapper.UserMapper;
+import com.kdshop.auth.mapper.UserRoleMapper;
 import com.kdshop.catalog.entity.Shop;
 import com.kdshop.catalog.mapper.ShopMapper;
 import com.kdshop.catalog.mapper.SkuMapper;
@@ -58,6 +62,8 @@ class AfterSalesServiceTest {
     @Mock private ShopMapper shopMapper;
     @Mock private UserMapper userMapper;
     @Mock private RefundService refundService;
+    @Mock private RoleMapper roleMapper;
+    @Mock private UserRoleMapper userRoleMapper;
 
     private AfterSalesService service;
     private final MetaProperties meta = new MetaProperties(
@@ -67,6 +73,8 @@ class AfterSalesServiceTest {
     void setUp() {
         service = new AfterSalesService(afterSaleMapper, logMapper, merchantOrderMapper, orderMapper,
                 orderItemMapper, skuMapper, shopMapper, userMapper, refundService, new ObjectMapper(), meta);
+        org.springframework.test.util.ReflectionTestUtils.setField(service, "roleMapper", roleMapper);
+        org.springframework.test.util.ReflectionTestUtils.setField(service, "userRoleMapper", userRoleMapper);
         SecurityContextHolder.getContext().setAuthentication(
                 UsernamePasswordAuthenticationToken.authenticated(1L, null, List.of()));
     }
@@ -274,6 +282,7 @@ class AfterSalesServiceTest {
 
         assertThat(view.status()).isEqualTo("REFUNDED");
         assertThat(view.inspectResult()).isEqualTo("DEFECTIVE");
+        assertThat(view.responsibility()).isEqualTo("MERCHANT");
         verify(skuMapper, never()).restoreStock(any(), anyInt());
     }
 
@@ -313,6 +322,122 @@ class AfterSalesServiceTest {
         item.setSkuId(skuId);
         item.setQuantity(quantity);
         return item;
+    }
+
+    @Test
+    void autoReviewRefundsRefundOnlyAfterMerchantTimeout() {
+        AfterSale afterSale = existing("APPLIED", "REFUND_ONLY");
+        afterSale.setReviewDueAt(LocalDateTime.now().minusHours(1));
+        when(afterSaleMapper.selectById(1L)).thenReturn(afterSale);
+        when(afterSaleMapper.update(any(), any())).thenReturn(1);
+        when(merchantOrderMapper.selectById(9L)).thenReturn(sub("COMPLETED", LocalDateTime.now(), 12800));
+        Refund refund = new Refund();
+        refund.setRefundNo("RF20261116005");
+        when(refundService.executeForAfterSales(any(), eq(12800), anyString(), eq("SYSTEM"), any()))
+                .thenReturn(refund);
+
+        assertThat(service.autoReview(1L)).isTrue();
+        verify(refundService).executeForAfterSales(any(), eq(12800), anyString(), eq("SYSTEM"), any());
+    }
+
+    @Test
+    void autoReviewEscalatesReturnRefundInsteadOfRefunding() {
+        AfterSale afterSale = existing("APPLIED", "RETURN_REFUND");
+        afterSale.setReviewDueAt(LocalDateTime.now().minusHours(1));
+        when(afterSaleMapper.selectById(1L)).thenReturn(afterSale);
+        when(afterSaleMapper.update(any(), any())).thenReturn(1);
+
+        assertThat(service.autoReview(1L)).isTrue();
+        verify(refundService, never()).executeForAfterSales(any(), anyInt(), anyString(), anyString(), any());
+    }
+
+    @Test
+    void autoReviewDoesNothingBeforeDeadline() {
+        AfterSale afterSale = existing("APPLIED", "REFUND_ONLY");
+        afterSale.setReviewDueAt(LocalDateTime.now().plusHours(5));
+        when(afterSaleMapper.selectById(1L)).thenReturn(afterSale);
+
+        assertThat(service.autoReview(1L)).isFalse();
+        verify(afterSaleMapper, never()).update(any(), any());
+    }
+
+    @Test
+    void verdictApprovesRefundOnlyAndRecordsResponsibility() {
+        loginAsAdmin();
+        AfterSale afterSale = existing("ESCALATED", "REFUND_ONLY");
+        when(afterSaleMapper.selectOne(any())).thenReturn(afterSale);
+        when(afterSaleMapper.update(any(), any())).thenReturn(1);
+        when(merchantOrderMapper.selectById(9L)).thenReturn(sub("COMPLETED", LocalDateTime.now(), 12800));
+        Refund refund = new Refund();
+        refund.setRefundNo("RF20261116006");
+        when(refundService.executeForAfterSales(any(), eq(12800), anyString(), eq("ADMIN"), eq(1L)))
+                .thenReturn(refund);
+
+        var view = service.verdict("AS20261116001",
+                new VerdictRequest("APPROVE", "MERCHANT", "商家责任，平台同意退款"));
+
+        assertThat(view.status()).isEqualTo("REFUNDED");
+        assertThat(view.responsibility()).isEqualTo("MERCHANT");
+        assertThat(view.verdictNote()).isEqualTo("商家责任，平台同意退款");
+    }
+
+    @Test
+    void verdictRejectsWithReason() {
+        loginAsAdmin();
+        AfterSale afterSale = existing("ESCALATED", "RETURN_REFUND");
+        when(afterSaleMapper.selectOne(any())).thenReturn(afterSale);
+        when(afterSaleMapper.update(any(), any())).thenReturn(1);
+
+        var view = service.verdict("AS20261116001",
+                new VerdictRequest("REJECT", "CUSTOMER", "非质量问题，平台驳回"));
+
+        assertThat(view.status()).isEqualTo("REJECTED");
+        assertThat(view.rejectReason()).isEqualTo("非质量问题，平台驳回");
+    }
+
+    @Test
+    void verdictApprovesReturnAndWaitsForShipment() {
+        loginAsAdmin();
+        AfterSale afterSale = existing("ESCALATED", "RETURN_REFUND");
+        when(afterSaleMapper.selectOne(any())).thenReturn(afterSale);
+        when(afterSaleMapper.update(any(), any())).thenReturn(1);
+
+        var view = service.verdict("AS20261116001",
+                new VerdictRequest("APPROVE", "LOGISTICS", "物流破损，平台同意退货"));
+
+        assertThat(view.status()).isEqualTo("RETURNING");
+        assertThat(view.returnDueAt()).isNotNull();
+    }
+
+    @Test
+    void verdictRequiresValidResponsibility() {
+        loginAsAdmin();
+        when(afterSaleMapper.selectOne(any())).thenReturn(existing("ESCALATED", "REFUND_ONLY"));
+
+        assertThatThrownBy(() -> service.verdict("AS20261116001",
+                new VerdictRequest("APPROVE", "SOMEONE", "原因")))
+                .isInstanceOf(BusinessException.class)
+                .extracting(e -> ((BusinessException) e).errorCode())
+                .isEqualTo(ErrorCode.PARAM_INVALID);
+    }
+
+    @Test
+    void verdictIsForbiddenForNonAdmin() {
+        when(roleMapper.selectOne(any())).thenReturn(null);
+
+        assertThatThrownBy(() -> service.verdict("AS20261116001",
+                new VerdictRequest("APPROVE", "MERCHANT", "原因")))
+                .isInstanceOf(BusinessException.class)
+                .extracting(e -> ((BusinessException) e).errorCode())
+                .isEqualTo(ErrorCode.RESOURCE_FORBIDDEN);
+    }
+
+    private void loginAsAdmin() {
+        Role role = new Role();
+        role.setId(5L);
+        role.setCode("ADMIN");
+        when(roleMapper.selectOne(any())).thenReturn(role);
+        when(userRoleMapper.selectCount(any())).thenReturn(1L);
     }
 
     private void stubOrderAndSub(String subStatus, LocalDateTime completedAt, String orderType) {
