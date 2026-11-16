@@ -21,6 +21,7 @@ public class Settlement {
     private Integer grossAmountCent;
     private Integer commissionCent;
     private Integer refundCent;
+    private Integer penaltyCent;
     private Integer netAmountCent;
     private String status;
     private LocalDateTime settledAt;

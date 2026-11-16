@@ -12,6 +12,7 @@ public record SettlementView(
         int grossAmount,
         int commission,
         int refund,
+        int penalty,
         int netAmount,
         String status,
         int orderCount,

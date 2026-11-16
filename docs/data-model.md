@@ -89,8 +89,8 @@ erDiagram
 
 | 表 | 关键字段 | 约束/索引 |
 |---|---|---|
-| `settlements` | id, settlement_no, merchant_id, period_start, period_end, gross_amount_cent, commission_cent, refund_cent, net_amount_cent, status(PENDING/SETTLED), settled_at | `uk_settlements_no`、`uk_settlements_merchant_period` |
-| `settlement_items` | id, settlement_id, merchant_order_id, gross_amount_cent, commission_cent, net_amount_cent | `uk_settlement_items_mo` |
+| `settlements` | id, settlement_no, merchant_id, period_start, period_end, gross_amount_cent, commission_cent, refund_cent, penalty_cent, net_amount_cent, status(PENDING/SETTLED), settled_at | `uk_settlements_no`、`uk_settlements_merchant_period` |
+| `settlement_items` | id, settlement_id, merchant_order_id, gross_amount_cent, commission_cent, refund_cent, penalty_cent, net_amount_cent | `uk_settlement_items_mo` |
 
 ### 营销与支撑域
 

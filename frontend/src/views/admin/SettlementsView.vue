@@ -80,7 +80,7 @@ async function confirm(item: Settlement) {
       <thead>
         <tr>
           <th>结算单</th><th>店铺</th><th>周期</th><th>订单</th>
-          <th>成交</th><th>佣金</th><th>退款</th><th>应结</th><th>状态</th><th></th>
+          <th>成交</th><th>佣金</th><th>退款</th><th>赔付</th><th>应结</th><th>状态</th><th></th>
         </tr>
       </thead>
       <tbody>
@@ -92,6 +92,7 @@ async function confirm(item: Settlement) {
           <td>¥{{ yuan(item.grossAmount) }}</td>
           <td>-¥{{ yuan(item.commission) }}</td>
           <td>-¥{{ yuan(item.refund) }}</td>
+          <td>-¥{{ yuan(item.penalty) }}</td>
           <td><strong>¥{{ yuan(item.netAmount) }}</strong></td>
           <td>{{ item.status === 'PAID' ? '已打款' : '待打款' }}</td>
           <td>

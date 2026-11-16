@@ -1,6 +1,7 @@
 package com.kdshop.settlement;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.kdshop.admin.AuditService;
 import com.kdshop.auth.entity.Role;
 import com.kdshop.auth.entity.UserRole;
@@ -12,6 +13,10 @@ import com.kdshop.common.BusinessException;
 import com.kdshop.common.ErrorCode;
 import com.kdshop.order.entity.MerchantOrder;
 import com.kdshop.order.mapper.MerchantOrderMapper;
+import com.kdshop.penalty.entity.Penalty;
+import com.kdshop.penalty.mapper.PenaltyMapper;
+import com.kdshop.settlement.dto.SettlementDetailView;
+import com.kdshop.settlement.dto.SettlementItemView;
 import com.kdshop.settlement.dto.SettlementView;
 import com.kdshop.settlement.entity.Settlement;
 import com.kdshop.settlement.entity.SettlementItem;
@@ -40,19 +45,22 @@ public class SettlementService {
     private final ShopMapper shopMapper;
     private final UserRoleMapper userRoleMapper;
     private final RoleMapper roleMapper;
+    private final PenaltyMapper penaltyMapper;
 
     @Autowired(required = false)
     private AuditService auditService;
 
     public SettlementService(SettlementMapper settlementMapper, SettlementItemMapper itemMapper,
                              MerchantOrderMapper merchantOrderMapper, ShopMapper shopMapper,
-                             UserRoleMapper userRoleMapper, RoleMapper roleMapper) {
+                             UserRoleMapper userRoleMapper, RoleMapper roleMapper,
+                             PenaltyMapper penaltyMapper) {
         this.settlementMapper = settlementMapper;
         this.itemMapper = itemMapper;
         this.merchantOrderMapper = merchantOrderMapper;
         this.shopMapper = shopMapper;
         this.userRoleMapper = userRoleMapper;
         this.roleMapper = roleMapper;
+        this.penaltyMapper = penaltyMapper;
     }
 
     @Transactional
@@ -89,14 +97,22 @@ public class SettlementService {
             int gross = 0;
             int commission = 0;
             int refund = 0;
+            int penalty = 0;
+            Map<Long, List<Penalty>> penaltiesBySub = new java.util.LinkedHashMap<>();
             for (MerchantOrder sub : subs) {
                 int pay = sub.getPayAmountCent() == null ? 0 : sub.getPayAmountCent();
                 int refunded = sub.getRefundedAmountCent() == null ? 0 : sub.getRefundedAmountCent();
                 gross += pay;
                 refund += refunded;
                 commission += (int) Math.round((pay - refunded) * rate / 10000.0);
+
+                List<Penalty> rows = penaltyMapper.selectList(new LambdaQueryWrapper<Penalty>()
+                        .eq(Penalty::getMerchantOrderId, sub.getId())
+                        .eq(Penalty::getStatus, "PENDING"));
+                penaltiesBySub.put(sub.getId(), rows);
+                penalty += rows.stream().mapToInt(p -> p.getAmountCent() == null ? 0 : p.getAmountCent()).sum();
             }
-            int net = gross - refund - commission;
+            int net = gross - refund - commission - penalty;
 
             Settlement settlement = new Settlement();
             settlement.setSettlementNo("ST" + LocalDate.now().format(DateTimeFormatter.BASIC_ISO_DATE)
@@ -107,6 +123,7 @@ public class SettlementService {
             settlement.setGrossAmountCent(gross);
             settlement.setCommissionCent(commission);
             settlement.setRefundCent(refund);
+            settlement.setPenaltyCent(penalty);
             settlement.setNetAmountCent(net);
             settlement.setStatus("PENDING");
             settlementMapper.insert(settlement);
@@ -115,13 +132,24 @@ public class SettlementService {
                 int pay = sub.getPayAmountCent() == null ? 0 : sub.getPayAmountCent();
                 int refunded = sub.getRefundedAmountCent() == null ? 0 : sub.getRefundedAmountCent();
                 int subCommission = (int) Math.round((pay - refunded) * rate / 10000.0);
+                List<Penalty> rows = penaltiesBySub.getOrDefault(sub.getId(), List.of());
+                int subPenalty = rows.stream().mapToInt(p -> p.getAmountCent() == null ? 0 : p.getAmountCent()).sum();
+
                 SettlementItem item = new SettlementItem();
                 item.setSettlementId(settlement.getId());
                 item.setMerchantOrderId(sub.getId());
                 item.setGrossAmountCent(pay);
                 item.setCommissionCent(subCommission);
-                item.setNetAmountCent(pay - refunded - subCommission);
+                item.setRefundCent(refunded);
+                item.setPenaltyCent(subPenalty);
+                item.setNetAmountCent(pay - refunded - subCommission - subPenalty);
                 itemMapper.insert(item);
+
+                if (!rows.isEmpty()) {
+                    penaltyMapper.update(null, new LambdaUpdateWrapper<Penalty>()
+                            .in(Penalty::getId, rows.stream().map(Penalty::getId).toList())
+                            .set(Penalty::getStatus, "SETTLED"));
+                }
 
                 MerchantOrder patch = new MerchantOrder();
                 patch.setId(sub.getId());
@@ -193,8 +221,56 @@ public class SettlementService {
     private SettlementView toView(Settlement s, Shop shop, int orderCount) {
         return new SettlementView(s.getSettlementNo(), s.getMerchantId(),
                 shop == null ? null : shop.getShopName(), s.getPeriodStart(), s.getPeriodEnd(),
-                s.getGrossAmountCent(), s.getCommissionCent(), s.getRefundCent(), s.getNetAmountCent(),
+                s.getGrossAmountCent(), s.getCommissionCent(), s.getRefundCent(),
+                nvl(s.getPenaltyCent()), s.getNetAmountCent(),
                 s.getStatus(), orderCount, s.getSettledAt(), s.getCreatedAt());
+    }
+
+    /** 结算单详情：表头 + 每个子单一行，退款与赔付都可下钻核对。 */
+    public SettlementDetailView detail(String settlementNo) {
+        Settlement settlement = settlementMapper.selectOne(new LambdaQueryWrapper<Settlement>()
+                .eq(Settlement::getSettlementNo, settlementNo));
+        if (settlement == null) {
+            throw new BusinessException(ErrorCode.PARAM_INVALID, "结算单不存在");
+        }
+        if (!canAccess(settlement.getMerchantId())) {
+            throw new BusinessException(ErrorCode.RESOURCE_FORBIDDEN);
+        }
+        Shop shop = shopMapper.selectById(settlement.getMerchantId());
+        List<SettlementItem> items = itemMapper.selectList(new LambdaQueryWrapper<SettlementItem>()
+                .eq(SettlementItem::getSettlementId, settlement.getId())
+                .orderByAsc(SettlementItem::getId));
+        Map<Long, String> subOrderNos = items.isEmpty() ? Map.of()
+                : merchantOrderMapper.selectBatchIds(
+                                items.stream().map(SettlementItem::getMerchantOrderId).distinct().toList())
+                        .stream()
+                        .collect(Collectors.toMap(MerchantOrder::getId, MerchantOrder::getSubOrderNo));
+        List<SettlementItemView> views = items.stream()
+                .map(item -> new SettlementItemView(
+                        subOrderNos.getOrDefault(item.getMerchantOrderId(), ""),
+                        nvl(item.getGrossAmountCent()), nvl(item.getCommissionCent()),
+                        nvl(item.getRefundCent()), nvl(item.getPenaltyCent()), nvl(item.getNetAmountCent())))
+                .toList();
+        return new SettlementDetailView(toView(settlement, shop, items.size()), views);
+    }
+
+    private boolean canAccess(Long merchantId) {
+        Long userId = currentUserId();
+        Role admin = roleMapper.selectOne(new LambdaQueryWrapper<Role>().eq(Role::getCode, "ADMIN"));
+        if (admin != null) {
+            Long count = userRoleMapper.selectCount(new LambdaQueryWrapper<UserRole>()
+                    .eq(UserRole::getUserId, userId)
+                    .eq(UserRole::getRoleId, admin.getId()));
+            if (count != null && count > 0) {
+                return true;
+            }
+        }
+        Shop shop = shopMapper.selectOne(new LambdaQueryWrapper<Shop>().eq(Shop::getUserId, userId));
+        return shop != null && shop.getId().equals(merchantId);
+    }
+
+    private int nvl(Integer value) {
+        return value == null ? 0 : value;
     }
 
     private Shop currentShop() {
