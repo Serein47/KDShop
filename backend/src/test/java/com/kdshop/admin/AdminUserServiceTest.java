@@ -14,10 +14,13 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.redis.core.SetOperations;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.util.List;
+import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -31,12 +34,14 @@ class AdminUserServiceTest {
     @Mock private UserMapper userMapper;
     @Mock private RoleMapper roleMapper;
     @Mock private UserRoleMapper userRoleMapper;
+    @Mock private StringRedisTemplate redis;
+    @Mock private SetOperations<String, String> setOps;
 
     private AdminUserService service;
 
     @BeforeEach
     void setUp() {
-        service = new AdminUserService(userMapper, roleMapper, userRoleMapper);
+        service = new AdminUserService(userMapper, roleMapper, userRoleMapper, redis);
         SecurityContextHolder.getContext().setAuthentication(
                 UsernamePasswordAuthenticationToken.authenticated(8L, null, List.of()));
     }
@@ -90,6 +95,47 @@ class AdminUserServiceTest {
                 .isInstanceOf(BusinessException.class)
                 .extracting(e -> ((BusinessException) e).errorCode())
                 .isEqualTo(ErrorCode.PARAM_INVALID);
+    }
+
+    @Test
+    void listMasksEmailAndPhone() {
+        when(roleMapper.selectOne(any())).thenReturn(adminRole());
+        when(userRoleMapper.selectCount(any())).thenReturn(1L);
+        User user = new User();
+        user.setId(2L);
+        user.setEmail("customer@kdshop.dev");
+        user.setPhone("13800008000");
+        user.setNickname("张三");
+        user.setStatus("ACTIVE");
+        when(userMapper.selectList(any())).thenReturn(List.of(user));
+        when(userRoleMapper.selectList(any())).thenReturn(List.of());
+        when(roleMapper.selectList(any())).thenReturn(List.of(adminRole()));
+
+        var list = service.list(null, null);
+
+        assertThat(list).hasSize(1);
+        assertThat(list.get(0).email()).isEqualTo("c***@kdshop.dev");
+        assertThat(list.get(0).phone()).isEqualTo("138****8000");
+    }
+
+    @Test
+    void disablingRevokesExistingSessions() {
+        when(roleMapper.selectOne(any())).thenReturn(adminRole());
+        when(userRoleMapper.selectCount(any())).thenReturn(1L);
+        User user = new User();
+        user.setId(2L);
+        user.setStatus("ACTIVE");
+        when(userMapper.selectById(2L)).thenReturn(user);
+        when(roleMapper.selectList(any())).thenReturn(List.of(adminRole()));
+        when(userRoleMapper.selectList(any())).thenReturn(List.of());
+        when(redis.opsForSet()).thenReturn(setOps);
+        when(setOps.members("user:sessions:2")).thenReturn(Set.of("sid-1"));
+
+        service.setStatus(2L, false, "违规");
+
+        verify(redis).delete(List.of("spring:session:sessions:sid-1",
+                "spring:session:sessions:expires:sid-1"));
+        verify(redis).delete("user:sessions:2");
     }
 
     @Test

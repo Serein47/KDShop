@@ -11,30 +11,39 @@ import com.kdshop.auth.mapper.UserRoleMapper;
 import com.kdshop.common.BusinessException;
 import com.kdshop.common.ErrorCode;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
-/** 平台账号与角色管理：禁用/启用、角色分配。 */
+/** 平台账号与角色管理：禁用/启用、角色分配；列表与详情脱敏。 */
 @Service
 public class AdminUserService {
+
+    private static final String SESSION_KEY = "user:sessions:";
+    private static final String SPRING_SESSION_KEY = "spring:session:sessions:";
 
     private final UserMapper userMapper;
     private final RoleMapper roleMapper;
     private final UserRoleMapper userRoleMapper;
+    private final StringRedisTemplate redis;
 
     @Autowired(required = false)
     private AuditService auditService;
 
-    public AdminUserService(UserMapper userMapper, RoleMapper roleMapper, UserRoleMapper userRoleMapper) {
+    public AdminUserService(UserMapper userMapper, RoleMapper roleMapper, UserRoleMapper userRoleMapper,
+                            StringRedisTemplate redis) {
         this.userMapper = userMapper;
         this.roleMapper = roleMapper;
         this.userRoleMapper = userRoleMapper;
+        this.redis = redis;
     }
 
     public List<AdminUserView> list(String keyword, String status) {
@@ -56,8 +65,12 @@ public class AdminUserService {
                 .collect(Collectors.toMap(Role::getId, Role::getCode));
         Map<Long, List<String>> byUser = links.stream().collect(Collectors.groupingBy(UserRole::getUserId,
                 Collectors.mapping(l -> roleCodes.getOrDefault(l.getRoleId(), "?"), Collectors.toList())));
-        return users.stream().map(u -> new AdminUserView(u.getId(), u.getEmail(), u.getNickname(), u.getStatus(),
-                byUser.getOrDefault(u.getId(), List.of()), u.getLastLoginAt(), u.getCreatedAt())).toList();
+        return users.stream().map(u -> viewOf(u, byUser.getOrDefault(u.getId(), List.of()))).toList();
+    }
+
+    public AdminUserView detail(Long userId) {
+        requireAdmin();
+        return toView(requireUser(userId));
     }
 
     @Transactional
@@ -71,6 +84,9 @@ public class AdminUserService {
         String from = user.getStatus();
         user.setStatus(active ? "ACTIVE" : "DISABLED");
         userMapper.updateById(user);
+        if (!active) {
+            revokeSessions(userId);
+        }
         if (auditService != null) {
             auditService.record("ADMIN", adminId, active ? "USER_ENABLE" : "USER_DISABLE", "USER",
                     String.valueOf(userId), Map.of("status", from),
@@ -115,8 +131,54 @@ public class AdminUserService {
         Map<Long, String> codes = roleMapper.selectList(new LambdaQueryWrapper<Role>()).stream()
                 .collect(Collectors.toMap(Role::getId, Role::getCode));
         List<String> roles = links.stream().map(l -> codes.getOrDefault(l.getRoleId(), "?")).toList();
-        return new AdminUserView(user.getId(), user.getEmail(), user.getNickname(), user.getStatus(), roles,
-                user.getLastLoginAt(), user.getCreatedAt());
+        return viewOf(user, roles);
+    }
+
+    /** 列表与详情统一脱敏：邮箱保留首字母与域名，手机保留前 3 后 4。 */
+    private AdminUserView viewOf(User user, List<String> roles) {
+        return new AdminUserView(user.getId(), maskEmail(user.getEmail()), maskPhone(user.getPhone()),
+                user.getNickname(), user.getStatus(), roles, user.getLastLoginAt(), user.getCreatedAt());
+    }
+
+    static String maskEmail(String email) {
+        if (!StringUtils.hasText(email)) {
+            return "";
+        }
+        int at = email.indexOf('@');
+        if (at <= 0) {
+            return "***";
+        }
+        String local = email.substring(0, at);
+        String domain = email.substring(at);
+        if (local.length() == 1) {
+            return "*" + domain;
+        }
+        return local.charAt(0) + "***" + domain;
+    }
+
+    static String maskPhone(String phone) {
+        if (!StringUtils.hasText(phone) || phone.length() < 7) {
+            return StringUtils.hasText(phone) ? "***" : "";
+        }
+        return phone.substring(0, 3) + "****" + phone.substring(phone.length() - 4);
+    }
+
+    /** 禁用后立即踢下线：清掉该用户在 Redis 里登记的所有 Spring Session。 */
+    private void revokeSessions(Long userId) {
+        if (redis == null || redis.opsForSet() == null) {
+            return;
+        }
+        String userSessions = SESSION_KEY + userId;
+        Set<String> sessionIds = redis.opsForSet().members(userSessions);
+        if (sessionIds != null && !sessionIds.isEmpty()) {
+            List<String> keys = new ArrayList<>();
+            for (String sessionId : sessionIds) {
+                keys.add(SPRING_SESSION_KEY + sessionId);
+                keys.add(SPRING_SESSION_KEY + "expires:" + sessionId);
+            }
+            redis.delete(keys);
+        }
+        redis.delete(userSessions);
     }
 
     private User requireUser(Long userId) {

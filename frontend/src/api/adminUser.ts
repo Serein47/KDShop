@@ -3,6 +3,7 @@ import http, { type ApiResponse } from './http'
 export interface AdminUser {
   id: number
   email: string
+  phone?: string
   nickname: string
   status: string
   roles: string[]
