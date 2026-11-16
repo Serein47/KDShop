@@ -14,6 +14,9 @@ public record MerchantProductView(
         int priceMax,
         int stock,
         int salesCount,
+        String saleMode,
+        Integer leadDays,
+        Integer depositRate,
         List<Sku> skus
 ) {
     public record Sku(Long id, int price, int stock, String spec) {

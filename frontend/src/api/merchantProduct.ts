@@ -1,5 +1,7 @@
 import http, { type ApiResponse } from './http'
 
+export type SaleMode = 'IN_STOCK' | 'PREORDER' | 'CUSTOM'
+
 export interface MerchantProduct {
   id: number
   name: string
@@ -12,6 +14,10 @@ export interface MerchantProduct {
   priceMax: number
   stock: number
   salesCount: number
+  saleMode: SaleMode
+  leadDays?: number
+  /** 定金比例，基点：3000 = 30% */
+  depositRate: number
   skus: { id: number; price: number; stock: number; spec: string }[]
 }
 
@@ -23,6 +29,10 @@ export interface ProductPayload {
   price: number
   stock: number
   mainImage?: string
+  saleMode?: SaleMode
+  leadDays?: number
+  /** 定金比例，基点：3000 = 30% */
+  depositRate?: number
 }
 
 export async function fetchProducts(status?: string): Promise<MerchantProduct[]> {

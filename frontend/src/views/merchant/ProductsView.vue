@@ -2,7 +2,8 @@
 import { computed, onMounted, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import {
-  createProduct, fetchProducts, setProductStatus, updateProduct, uploadImage, type MerchantProduct,
+  createProduct, fetchProducts, setProductStatus, updateProduct, uploadImage,
+  type MerchantProduct, type SaleMode,
 } from '@/api/merchantProduct'
 import { fetchCategories, yuan, type CategoryNode } from '@/api/catalog'
 import { mediaUrl } from '@/api/media'
@@ -15,7 +16,18 @@ const dialog = ref(false)
 const saving = ref(false)
 const uploading = ref(false)
 const categories = ref<CategoryNode[]>([])
-const form = ref({ name: '', subtitle: '', categoryId: 0, price: 0, stock: 0, mainImage: '' })
+const form = ref({
+  name: '', subtitle: '', categoryId: 0, price: 0, stock: 0, mainImage: '',
+  saleMode: 'IN_STOCK' as SaleMode, leadDays: 7, depositRatePercent: 30,
+})
+
+const isPreorder = computed(() => form.value.saleMode !== 'IN_STOCK')
+
+function modeLabel(item: MerchantProduct) {
+  if (item.saleMode === 'CUSTOM') return `定制 · 工期 ${item.leadDays} 天 · 定金 ${item.depositRate / 100}%`
+  if (item.saleMode === 'PREORDER') return `预售 · 预计 ${item.leadDays} 天发货 · 定金 ${item.depositRate / 100}%`
+  return '现货'
+}
 
 const leaves = computed(() => {
   const out: { id: number; label: string }[] = []
@@ -43,7 +55,10 @@ onMounted(async () => {
 
 function openCreate() {
   editing.value = null
-  form.value = { name: '', subtitle: '', categoryId: leaves.value[0]?.id ?? 0, price: 0, stock: 0, mainImage: '' }
+  form.value = {
+    name: '', subtitle: '', categoryId: leaves.value[0]?.id ?? 0, price: 0, stock: 0, mainImage: '',
+    saleMode: 'IN_STOCK', leadDays: 7, depositRatePercent: 30,
+  }
   dialog.value = true
 }
 
@@ -56,6 +71,9 @@ function openEdit(item: MerchantProduct) {
     price: item.priceMin / 100,
     stock: item.stock,
     mainImage: item.mainImage ?? '',
+    saleMode: item.saleMode ?? 'IN_STOCK',
+    leadDays: item.leadDays ?? 7,
+    depositRatePercent: (item.depositRate ?? 0) / 100 || 30,
   }
   dialog.value = true
 }
@@ -81,6 +99,18 @@ async function save() {
     ElMessage.warning('请填写名称、类目和价格')
     return
   }
+  if (isPreorder.value) {
+    const days = Number(form.value.leadDays)
+    const rate = Number(form.value.depositRatePercent)
+    if (!(days >= 3 && days <= 60)) {
+      ElMessage.warning('预售/定制商品的工期需在 3–60 天之间')
+      return
+    }
+    if (!(rate >= 1 && rate <= 100)) {
+      ElMessage.warning('定金比例需在 1%–100% 之间')
+      return
+    }
+  }
   saving.value = true
   try {
     const payload = {
@@ -90,6 +120,9 @@ async function save() {
       price: Math.round(form.value.price * 100),
       stock: form.value.stock,
       mainImage: form.value.mainImage || undefined,
+      saleMode: form.value.saleMode,
+      leadDays: isPreorder.value ? Number(form.value.leadDays) : undefined,
+      depositRate: isPreorder.value ? Math.round(Number(form.value.depositRatePercent) * 100) : 0,
     }
     if (editing.value) await updateProduct(editing.value.id, payload)
     else await createProduct(payload)
@@ -142,6 +175,7 @@ async function toggle(item: MerchantProduct) {
         <div class="info">
           <h2>{{ item.name }}</h2>
           <p class="muted">{{ item.categoryName }} · {{ item.status === 'ON' ? '在售' : '已下架' }}</p>
+          <p class="muted">{{ modeLabel(item) }}</p>
           <p class="price">¥{{ yuan(item.priceMin) }}<span v-if="item.priceMax !== item.priceMin"> 起</span></p>
           <p class="muted">库存 {{ item.stock }} · 已售 {{ item.salesCount }}</p>
         </div>
@@ -161,6 +195,21 @@ async function toggle(item: MerchantProduct) {
             <option v-for="leaf in leaves" :key="leaf.id" :value="leaf.id">{{ leaf.label }}</option>
           </select>
         </label>
+        <label>销售模式
+          <select v-model="form.saleMode">
+            <option value="IN_STOCK">现货 · 48 小时内发出</option>
+            <option value="PREORDER">预售 · 付定金后按工期发货</option>
+            <option value="CUSTOM">定制 · 接单制作</option>
+          </select>
+        </label>
+        <div v-if="isPreorder" class="row">
+          <label>工期（天，3–60）
+            <input v-model.number="form.leadDays" type="number" min="3" max="60" />
+          </label>
+          <label>定金比例（%）
+            <input v-model.number="form.depositRatePercent" type="number" min="1" max="100" step="1" />
+          </label>
+        </div>
         <div class="row">
           <label>价格（元）<input v-model.number="form.price" type="number" min="0.01" step="0.01" /></label>
           <label>库存<input v-model.number="form.stock" type="number" min="0" /></label>

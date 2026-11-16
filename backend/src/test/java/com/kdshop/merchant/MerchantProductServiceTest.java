@@ -63,7 +63,8 @@ class MerchantProductServiceTest {
         category.setName("餐具");
         when(categoryMapper.selectById(11L)).thenReturn(category);
 
-        var view = service.create(new ProductUpsertRequest("测试杯", "演示", null, 11L, 1990, 20, null));
+        var view = service.create(new ProductUpsertRequest("测试杯", "演示", null, 11L, 1990, 20, null,
+                null, null, null));
 
         assertThat(view.name()).isEqualTo("测试杯");
         assertThat(view.status()).isEqualTo("ON");
@@ -78,7 +79,8 @@ class MerchantProductServiceTest {
         other.setMerchantId(2L);
         when(productMapper.selectById(50L)).thenReturn(other);
 
-        assertThatThrownBy(() -> service.update(50L, new ProductUpsertRequest("改", null, null, 11L, 100, 1, null)))
+        assertThatThrownBy(() -> service.update(50L, new ProductUpsertRequest("改", null, null, 11L, 100, 1, null,
+                null, null, null)))
                 .isInstanceOf(BusinessException.class)
                 .extracting(e -> ((BusinessException) e).errorCode())
                 .isEqualTo(ErrorCode.MERCHANT_SCOPE_FORBIDDEN);
@@ -98,5 +100,59 @@ class MerchantProductServiceTest {
 
         assertThat(view.status()).isEqualTo("OFF");
         verify(productMapper).updateById(mine);
+    }
+
+    @Test
+    void preorderWithoutLeadDaysIsRejected() {
+        when(categoryMapper.selectById(11L)).thenReturn(category());
+
+        assertThatThrownBy(() -> service.create(new ProductUpsertRequest("定制杯", null, null, 11L, 9900, 5, null,
+                "CUSTOM", null, 3000)))
+                .isInstanceOf(BusinessException.class)
+                .extracting(e -> ((BusinessException) e).errorCode())
+                .isEqualTo(ErrorCode.PARAM_INVALID);
+        verify(productMapper, never()).insert(any(Product.class));
+    }
+
+    @Test
+    void preorderKeepsLeadDaysAndDepositRate() {
+        when(categoryMapper.selectById(11L)).thenReturn(category());
+
+        var view = service.create(new ProductUpsertRequest("预售杯", null, null, 11L, 9900, 5, null,
+                "PREORDER", 7, 3000));
+
+        assertThat(view.saleMode()).isEqualTo("PREORDER");
+        assertThat(view.leadDays()).isEqualTo(7);
+        assertThat(view.depositRate()).isEqualTo(3000);
+    }
+
+    @Test
+    void inStockIgnoresLeadDaysAndDepositRate() {
+        when(categoryMapper.selectById(11L)).thenReturn(category());
+
+        var view = service.create(new ProductUpsertRequest("现货杯", null, null, 11L, 9900, 5, null,
+                "IN_STOCK", 30, 5000));
+
+        assertThat(view.saleMode()).isEqualTo("IN_STOCK");
+        assertThat(view.leadDays()).isNull();
+        assertThat(view.depositRate()).isZero();
+    }
+
+    @Test
+    void depositRateOutOfRangeIsRejected() {
+        when(categoryMapper.selectById(11L)).thenReturn(category());
+
+        assertThatThrownBy(() -> service.create(new ProductUpsertRequest("定制杯", null, null, 11L, 9900, 5, null,
+                "CUSTOM", 10, 0)))
+                .isInstanceOf(BusinessException.class)
+                .extracting(e -> ((BusinessException) e).errorCode())
+                .isEqualTo(ErrorCode.PARAM_INVALID);
+    }
+
+    private Category category() {
+        Category category = new Category();
+        category.setId(11L);
+        category.setName("餐具");
+        return category;
     }
 }
