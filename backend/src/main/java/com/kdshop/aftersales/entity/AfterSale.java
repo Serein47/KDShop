@@ -31,11 +31,14 @@ public class AfterSale {
     private String returnCarrier;
     private String returnTrackingNo;
     private LocalDateTime returnShippedAt;
+    private LocalDateTime returnDueAt;
     private LocalDateTime receivedAt;
+    private LocalDateTime inspectDueAt;
     /** GOOD / DEFECTIVE */
     private String inspectResult;
     private String inspectNote;
     private String inspectImagesJson;
+    private Integer stockRestored;
     /** MERCHANT / LOGISTICS / CUSTOMER */
     private String responsibility;
     private String verdictNote;

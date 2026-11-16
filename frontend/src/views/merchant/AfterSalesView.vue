@@ -3,7 +3,7 @@ import { onMounted, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
   AFTER_SALE_STATUS_LABELS, REASON_LABELS, fetchMerchantAfterSale, fetchMerchantAfterSales,
-  reviewAfterSale, type AfterSale,
+  inspectAfterSale, markAfterSaleReceived, reviewAfterSale, uploadEvidence, type AfterSale,
 } from '@/api/afterSales'
 import { mediaUrl } from '@/api/media'
 import { formatDateTime } from '@/utils/order'
@@ -17,6 +17,10 @@ const dialog = ref(false)
 const busy = ref(false)
 const rejectOpen = ref(false)
 const rejectReason = ref('')
+const inspectOpen = ref(false)
+const inspectForm = ref({ result: 'GOOD' as 'GOOD' | 'DEFECTIVE', note: '' })
+const inspectImages = ref<string[]>([])
+const uploading = ref(false)
 
 const tabs = [
   { value: 'APPLIED', label: '待处理' },
@@ -98,6 +102,76 @@ async function submitReject() {
 function typeLabel(type: string) {
   return type === 'RETURN_REFUND' ? '退货退款' : '仅退款'
 }
+
+async function receive(item: AfterSale) {
+  try {
+    await ElMessageBox.confirm('确认已经收到顾客寄回的商品？确认后开始 48 小时质检倒计时。', '确认收货', {
+      confirmButtonText: '确认收货',
+      cancelButtonText: '还没收到',
+      type: 'info',
+    })
+  } catch {
+    return
+  }
+  busy.value = true
+  try {
+    await markAfterSaleReceived(item.asNo)
+    ElMessage.success('已确认收货，请在 48 小时内完成质检')
+    detail.value = await fetchMerchantAfterSale(item.asNo)
+    await load()
+  } catch (e: any) {
+    ElMessage.error(e?.response?.data?.message || '操作失败')
+  } finally {
+    busy.value = false
+  }
+}
+
+function openInspect(item: AfterSale) {
+  detail.value = item
+  inspectForm.value = { result: 'GOOD', note: '' }
+  inspectImages.value = []
+  inspectOpen.value = true
+}
+
+async function onInspectFile(event: Event) {
+  const input = event.target as HTMLInputElement
+  const file = input.files?.[0]
+  if (!file) return
+  if (inspectImages.value.length >= 3) {
+    ElMessage.warning('最多 3 张质检图片')
+    return
+  }
+  uploading.value = true
+  try {
+    inspectImages.value.push(await uploadEvidence(file))
+  } catch (e: any) {
+    ElMessage.error(e?.response?.data?.message || '上传失败')
+  } finally {
+    uploading.value = false
+    input.value = ''
+  }
+}
+
+async function submitInspect() {
+  if (!detail.value) return
+  busy.value = true
+  try {
+    const result = await inspectAfterSale(
+      detail.value.asNo,
+      inspectForm.value.result,
+      inspectForm.value.note || undefined,
+      inspectImages.value,
+    )
+    ElMessage.success(result.status === 'REFUNDED' ? '质检完成，已退款' : '质检已提交')
+    inspectOpen.value = false
+    dialog.value = false
+    await load()
+  } catch (e: any) {
+    ElMessage.error(e?.response?.data?.message || '提交失败')
+  } finally {
+    busy.value = false
+  }
+}
 </script>
 
 <template>
@@ -132,12 +206,17 @@ function typeLabel(type: string) {
         </header>
         <p class="line">{{ typeLabel(item.type) }} · {{ REASON_LABELS[item.reasonCode] }} · 退款 ¥{{ yuan(item.refundAmount) }}</p>
         <p v-if="item.description" class="desc">{{ item.description }}</p>
+        <p v-if="item.returnTrackingNo" class="muted">寄回：{{ item.returnCarrier }} · {{ item.returnTrackingNo }}</p>
         <div class="actions">
           <button class="btn btn--ghost" @click="openDetail(item)">详情</button>
           <template v-if="item.status === 'APPLIED'">
             <button class="btn btn--solid" :disabled="busy" @click="approve(item)">同意</button>
             <button class="btn btn--ghost" :disabled="busy" @click="openReject(item)">驳回</button>
           </template>
+          <button v-if="item.status === 'RETURNING' && item.returnTrackingNo" class="btn btn--solid"
+            :disabled="busy" @click="receive(item)">确认收货</button>
+          <button v-if="item.status === 'RECEIVED'" class="btn btn--solid"
+            :disabled="busy" @click="openInspect(item)">提交质检</button>
         </div>
       </article>
     </div>
@@ -159,6 +238,17 @@ function typeLabel(type: string) {
         <p v-if="detail.returnTrackingNo" class="muted">
           寄回：{{ detail.returnCarrier }} · {{ detail.returnTrackingNo }}
         </p>
+        <p v-if="detail.status === 'RETURNING' && detail.returnDueAt" class="muted">
+          寄回截止：{{ formatDateTime(detail.returnDueAt) }}
+        </p>
+        <p v-if="detail.receivedAt" class="muted">
+          收货时间：{{ formatDateTime(detail.receivedAt) }}
+          <template v-if="detail.inspectDueAt"> · 质检截止 {{ formatDateTime(detail.inspectDueAt) }}</template>
+        </p>
+        <p v-if="detail.inspectResult" class="muted">
+          质检结果：{{ detail.inspectResult === 'GOOD' ? '良品（已回补库存）' : '残次（不回补库存）' }}
+          <template v-if="detail.inspectNote"> · {{ detail.inspectNote }}</template>
+        </p>
         <ol v-if="detail.logs?.length" class="timeline">
           <li v-for="(log, index) in detail.logs" :key="index">
             <span class="dot" />
@@ -172,6 +262,12 @@ function typeLabel(type: string) {
           <button class="btn btn--solid" :disabled="busy" @click="approve(detail)">同意</button>
           <button class="btn btn--ghost" :disabled="busy" @click="openReject(detail)">驳回</button>
         </div>
+        <div v-if="detail.status === 'RETURNING' && detail.returnTrackingNo" class="actions">
+          <button class="btn btn--solid" :disabled="busy" @click="receive(detail)">确认收货</button>
+        </div>
+        <div v-if="detail.status === 'RECEIVED'" class="actions">
+          <button class="btn btn--solid" :disabled="busy" @click="openInspect(detail)">提交质检</button>
+        </div>
       </template>
     </el-dialog>
 
@@ -182,6 +278,41 @@ function typeLabel(type: string) {
       <template #footer>
         <button class="btn btn--ghost" @click="rejectOpen = false">取消</button>
         <button class="btn btn--solid" :disabled="busy" @click="submitReject">确认驳回</button>
+      </template>
+    </el-dialog>
+
+    <el-dialog v-model="inspectOpen" title="提交质检" width="520px">
+      <p class="muted">售后单 {{ detail?.asNo }} · 良品回补库存并退款，残次仅退款但不回补库存</p>
+      <div class="inspect">
+        <label>质检结果
+          <select v-model="inspectForm.result">
+            <option value="GOOD">良品</option>
+            <option value="DEFECTIVE">残次</option>
+          </select>
+        </label>
+        <label>说明
+          <textarea v-model="inspectForm.note" rows="3" maxlength="300"
+            placeholder="例如：商品完好可二次销售 / 杯口磕碰无法二次销售" />
+        </label>
+        <div>
+          <p class="muted">质检图片（最多 3 张）</p>
+          <div class="shots">
+            <div v-for="(key, index) in inspectImages" :key="key" class="shot">
+              <img :src="mediaUrl(key)" alt="质检图" />
+              <button type="button" @click="inspectImages.splice(index, 1)">移除</button>
+            </div>
+            <label v-if="inspectImages.length < 3" class="picker">
+              <input type="file" accept="image/jpeg,image/png,image/webp" @change="onInspectFile" />
+              {{ uploading ? '上传中…' : '＋ 上传' }}
+            </label>
+          </div>
+        </div>
+      </div>
+      <template #footer>
+        <button class="btn btn--ghost" @click="inspectOpen = false">取消</button>
+        <button class="btn btn--solid" :disabled="busy || uploading" @click="submitInspect">
+          {{ busy ? '提交中…' : '提交质检' }}
+        </button>
       </template>
     </el-dialog>
   </div>
@@ -220,4 +351,21 @@ h1 { font-size: 34px; margin: 6px 0 0; }
 .timeline strong { display: block; font-size: 13px; }
 .timeline span { font-size: 12px; color: var(--muted); }
 .reason { width: 100%; box-sizing: border-box; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; font-family: inherit; font-size: 14px; resize: vertical; }
+.inspect { display: grid; gap: 12px; margin-top: 10px; }
+.inspect label { display: grid; gap: 6px; font-size: 13px; color: var(--muted); }
+.inspect select, .inspect textarea {
+  padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; font: inherit; font-size: 14px; resize: vertical;
+}
+.shot { position: relative; width: 72px; height: 72px; border-radius: 8px; overflow: hidden; }
+.shot img { width: 100%; height: 100%; object-fit: cover; }
+.shot button {
+  position: absolute; inset: auto 0 0 0; border: 0; background: rgba(0, 0, 0, .55);
+  color: #fff; font-size: 10px; padding: 2px 0; cursor: pointer;
+}
+.picker {
+  display: grid; place-items: center; width: 72px; height: 72px;
+  border: 1px dashed var(--line); border-radius: 8px; cursor: pointer;
+  font-size: 11px; color: var(--muted);
+}
+.picker input { display: none; }
 </style>

@@ -3,7 +3,8 @@ import { computed, onMounted, ref } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import {
-  AFTER_SALE_STATUS_LABELS, REASON_LABELS, fetchMyAfterSale, fetchMyAfterSales, type AfterSale,
+  AFTER_SALE_STATUS_LABELS, REASON_LABELS, fetchMyAfterSale, fetchMyAfterSales, submitReturn,
+  type AfterSale,
 } from '@/api/afterSales'
 import { useAuthStore } from '@/stores/auth'
 import { mediaUrl } from '@/api/media'
@@ -18,6 +19,9 @@ const loading = ref(true)
 const detail = ref<AfterSale | null>(null)
 const dialog = ref(false)
 const reapplyOpen = ref(false)
+const returnOpen = ref(false)
+const returnBusy = ref(false)
+const returnForm = ref({ carrier: '顺丰速运', trackingNo: '' })
 
 const active = computed(() => detail.value)
 
@@ -62,6 +66,30 @@ async function onReapplied() {
   reapplyOpen.value = false
   await load()
   if (detail.value) detail.value = await fetchMyAfterSale(detail.value.asNo)
+}
+
+function openReturn() {
+  returnForm.value = { carrier: '顺丰速运', trackingNo: '' }
+  returnOpen.value = true
+}
+
+async function submitReturnForm() {
+  if (!detail.value) return
+  if (!returnForm.value.trackingNo.trim()) {
+    ElMessage.warning('请填写运单号')
+    return
+  }
+  returnBusy.value = true
+  try {
+    detail.value = await submitReturn(detail.value.asNo, returnForm.value.carrier, returnForm.value.trackingNo.trim())
+    ElMessage.success('寄回物流已提交，等待商家收货')
+    returnOpen.value = false
+    await load()
+  } catch (e: any) {
+    ElMessage.error(e?.response?.data?.message || '提交失败')
+  } finally {
+    returnBusy.value = false
+  }
 }
 </script>
 
@@ -119,6 +147,10 @@ async function onReapplied() {
         <p v-if="active.returnTrackingNo" class="meta">
           寄回：{{ active.returnCarrier }} · {{ active.returnTrackingNo }}
         </p>
+        <p v-if="active.status === 'RETURNING' && !active.returnTrackingNo && active.returnDueAt" class="meta">
+          请于 {{ formatDateTime(active.returnDueAt) }} 前寄回并填写物流，逾期售后将自动关闭。
+        </p>
+        <p v-if="active.receivedAt" class="meta">商家收货：{{ formatDateTime(active.receivedAt) }}</p>
         <p v-if="active.inspectResult" class="meta">
           质检：{{ active.inspectResult === 'GOOD' ? '良品' : '残次' }}{{ active.inspectNote ? ' · ' + active.inspectNote : '' }}
         </p>
@@ -136,6 +168,9 @@ async function onReapplied() {
         <div v-if="canReapply(active)" class="actions">
           <button class="btn btn--solid" @click="reapplyOpen = true">补充证据重新申请</button>
         </div>
+        <div v-if="active.status === 'RETURNING' && !active.returnTrackingNo" class="actions">
+          <button class="btn btn--solid" @click="openReturn">填写寄回物流</button>
+        </div>
       </template>
     </el-dialog>
 
@@ -146,6 +181,30 @@ async function onReapplied() {
       :custom-only="false"
       @submitted="onReapplied"
     />
+
+    <el-dialog v-model="returnOpen" title="填写寄回物流" width="460px">
+      <div class="return-form">
+        <label>快递公司
+          <select v-model="returnForm.carrier">
+            <option>顺丰速运</option>
+            <option>中通快递</option>
+            <option>圆通速递</option>
+            <option>韵达快递</option>
+            <option>京东物流</option>
+            <option>邮政 EMS</option>
+          </select>
+        </label>
+        <label>运单号
+          <input v-model="returnForm.trackingNo" placeholder="例如：SF1234567890" />
+        </label>
+      </div>
+      <template #footer>
+        <button class="btn btn--ghost" @click="returnOpen = false">取消</button>
+        <button class="btn btn--solid" :disabled="returnBusy" @click="submitReturnForm">
+          {{ returnBusy ? '提交中…' : '提交' }}
+        </button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -184,4 +243,9 @@ h1 { font-size: 34px; margin: 6px 0 0; }
 .timeline strong { display: block; font-size: 13px; }
 .timeline span { font-size: 12px; color: var(--muted); }
 .actions { margin-top: 8px; }
+.return-form { display: grid; gap: 12px; }
+.return-form label { display: grid; gap: 6px; font-size: 13px; color: var(--muted); }
+.return-form select, .return-form input {
+  padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; font-size: 14px;
+}
 </style>
