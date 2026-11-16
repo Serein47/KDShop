@@ -22,12 +22,14 @@ import org.springframework.util.StringUtils;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /** 商家商品管理：只操作本店商品，价格与库存落在默认 SKU 上。 */
 @Service
 public class MerchantProductService {
 
+    private static final Set<String> SALE_MODES = Set.of("IN_STOCK", "PREORDER", "CUSTOM");
     private final ShopMapper shopMapper;
     private final ProductMapper productMapper;
     private final SkuMapper skuMapper;
@@ -74,8 +76,7 @@ public class MerchantProductService {
         product.setDescription(request.description());
         product.setMainImage(request.mainImage());
         product.setStatus("ON");
-        product.setSaleMode("IN_STOCK");
-        product.setDepositRate(0);
+        applySaleMode(product, request);
         product.setRequiresFlawAck(0);
         product.setIsUnique(0);
         product.setSalesCount(0);
@@ -106,6 +107,7 @@ public class MerchantProductService {
         if (request.mainImage() != null) {
             product.setMainImage(request.mainImage());
         }
+        applySaleMode(product, request);
         productMapper.updateById(product);
 
         List<Sku> skus = skuMapper.selectList(new LambdaQueryWrapper<Sku>().eq(Sku::getProductId, productId));
@@ -157,6 +159,35 @@ public class MerchantProductService {
         return category;
     }
 
+    /**
+     * 销售模式（ISSUE-33）：现货清空工期与定金；预售/定制强制 3–60 天、定金 1%–100%。
+     * SKU 不存销售模式，全部继承商品，所以这里只落商品。
+     */
+    private void applySaleMode(Product product, ProductUpsertRequest request) {
+        String mode = StringUtils.hasText(request.saleMode())
+                ? request.saleMode().trim().toUpperCase() : "IN_STOCK";
+        if (!SALE_MODES.contains(mode)) {
+            throw new BusinessException(ErrorCode.PARAM_INVALID, "销售模式只能是现货、预售或定制");
+        }
+        if ("IN_STOCK".equals(mode)) {
+            product.setSaleMode("IN_STOCK");
+            product.setLeadDays(null);
+            product.setDepositRate(0);
+            return;
+        }
+        Integer leadDays = request.leadDays();
+        if (leadDays == null || leadDays < 3 || leadDays > 60) {
+            throw new BusinessException(ErrorCode.PARAM_INVALID, "预售/定制商品需填写 3–60 天工期");
+        }
+        Integer rate = request.depositRate();
+        if (rate == null || rate < 1 || rate > 10000) {
+            throw new BusinessException(ErrorCode.PARAM_INVALID, "定金比例需在 1%–100% 之间");
+        }
+        product.setSaleMode(mode);
+        product.setLeadDays(leadDays);
+        product.setDepositRate(rate);
+    }
+
     private MerchantProductView toView(Product product, List<Sku> skus) {
         Category category = categoryMapper.selectById(product.getCategoryId());
         int priceMin = skus.stream().mapToInt(Sku::getPriceCent).min().orElse(0);
@@ -169,7 +200,8 @@ public class MerchantProductService {
         return new MerchantProductView(product.getId(), product.getName(), product.getSubtitle(),
                 product.getCategoryId(), category == null ? null : category.getName(), product.getStatus(),
                 product.getMainImage(), priceMin, priceMax, stock,
-                product.getSalesCount() == null ? 0 : product.getSalesCount(), views);
+                product.getSalesCount() == null ? 0 : product.getSalesCount(),
+                product.getSaleMode(), product.getLeadDays(), product.getDepositRate(), views);
     }
 
     private String readSpec(String json) {

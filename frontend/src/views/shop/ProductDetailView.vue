@@ -56,6 +56,12 @@ const saleText = computed(() => {
   return '现货 · 48 小时内发出'
 })
 
+const depositText = computed(() => {
+  const rate = product.value?.depositRate
+  if (!rate || product.value?.saleMode === 'IN_STOCK') return ''
+  return `定金 ${rate / 100}%`
+})
+
 async function toggleFavorite() {
   if (!auth.user) {
     router.push({ path: '/login', query: { redirect: route.fullPath } })
@@ -134,6 +140,7 @@ onMounted(async () => {
           <ProductMedia :name="product.name" :image="product.mainImage" :seed="product.id" ratio="4 / 5" />
           <div class="meta-strip">
             <span>{{ saleText }}</span>
+            <span v-if="depositText">{{ depositText }}</span>
             <span v-if="product.editionSize">限量 {{ product.editionSize }} 件 · 第 {{ product.editionNo }} 件</span>
             <span v-if="product.uniquePiece">仅此一件</span>
           </div>
