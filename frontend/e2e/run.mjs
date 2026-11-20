@@ -248,7 +248,9 @@ const scenarios = [
 const ctx = {}
 
 async function main() {
-  const browser = await chromium.launch({ channel: 'msedge', headless: true })
+  // 默认用系统 Edge；本机 Edge 策略拦截自动化导航时，设 E2E_CHANNEL=none 改用 Playwright 自带 Chromium
+  const channel = process.env.E2E_CHANNEL === 'none' ? '' : (process.env.E2E_CHANNEL || 'msedge')
+  const browser = await chromium.launch({ ...(channel ? { channel } : {}), headless: true })
   const context = await browser.newContext({ viewport: { width: 1440, height: 1000 } })
   page = await context.newPage()
   page.setDefaultTimeout(15000)
