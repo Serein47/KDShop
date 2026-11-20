@@ -7,7 +7,8 @@
 - 后端：`http://127.0.0.1:8081`（`--server.port=8081`）
 - 前端：`http://localhost:5180`（`npm run dev`，`VITE_API_TARGET` 指向 8081）
 - Mailpit：`http://localhost:8025`
-- 浏览器：本机安装 Microsoft Edge（脚本用 `channel: 'msedge'`，不额外下载 Chromium）
+- 浏览器：本机安装 Microsoft Edge（脚本默认 `channel: 'msedge'`，不额外下载 Chromium）
+  - 若本机 Edge 策略拦截自动化导航（报 `ERR_BLOCKED_BY_CLIENT`，连 example.com 都打不开），设 `E2E_CHANNEL=none` 改用 Playwright 自带 Chromium：先 `npx playwright-core install chromium`
 
 ## 运行
 
@@ -20,7 +21,7 @@ npm run e2e
 
 退出码 0 表示全部通过；失败时截图写到 `.shots/e2e/`，结构化结果写到 `.shots/e2e-report.json`。
 
-> 最近实测：2026-11-16，真实 MySQL / Redis / Mailpit 环境，**6/6 通过**。
+> 最近实测：2026-11-20，**对线上 V24（http://8.134.215.195）**，`E2E_BASE`/`MAILPIT_URL`（SSH 隧道到 mailpit 容器）指向生产环境，**6/6 通过**。2026-11-16 本地真实 MySQL / Redis / Mailpit 环境同样 6/6 通过。
 
 ## 覆盖的场景（6 条）
 

@@ -64,7 +64,9 @@ bash scripts/deploy-ecs.sh
 ## 上线状态
 
 - 公网 HTTP 可访问：`http://8.134.215.195/`（2026-11-20 实测 200）
-- 线上为 **2026-11-10 部署的版本（Flyway V9）**；本地 main 已到 V24，M5/M6 新功能未上线——演示范围不要求同步更新
+- 线上为 **2026-11-20 部署的 main（Flyway V24，含 M5/M6）**：当日 17:22 从 V16 迁移到 V24，8 个迁移全部成功，冒烟 8/8 通过
+- 上一版为 2026-11-10 部署（Flyway V16，到提交 `0f0d243`）；回滚点在 ECS `~/backup/`：`kdshop-2026-11-20-1721.sql`（V16 全库 dump）、`app.jar.v16`、`web-v16.tgz`
+- **版本查询陷阱**：`flyway_schema_history.version` 是 varchar，`select max(version)` 做字符串比较会把 `'9'` 排在 `'16'` 前面，读出「V9」的假象（本文 2026-11-20 之前那版就记错了）。查版本用 `select max(cast(version as unsigned))`，或直接看后端启动日志的 `now at version`
 - 演示范围不做系统盘快照与自动备份；2026-11-16 做过一次手工恢复演练（见「备份」）
 
 ## 日常运维
