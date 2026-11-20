@@ -63,8 +63,9 @@ bash scripts/deploy-ecs.sh
 
 ## 上线状态
 
-- 安全组已放行 TCP 80，公网访问正常：`http://8.134.215.195/`（实测 200）
-- 仍需完成：**创建系统盘快照**——这台机器目前没有任何快照，误删或被黑无法恢复
+- 公网 HTTP 可访问：`http://8.134.215.195/`（2026-11-20 实测 200）
+- 线上为 **2026-11-10 部署的版本（Flyway V9）**；本地 main 已到 V24，M5/M6 新功能未上线——演示范围不要求同步更新
+- 演示范围不做系统盘快照与自动备份；2026-11-16 做过一次手工恢复演练（见「备份」）
 
 ## 日常运维
 
@@ -93,6 +94,8 @@ ssh ecs 'docker run --rm -v kdshop_minio-data:/data -v ~/backup:/backup alpine t
 
 最稳的仍是控制台快照。
 
+**恢复演练（2026-11-16，已执行）**：`mysqldump --single-transaction` 导出 116K → 导入临时库 `kdshop_restore_check` → 源库/恢复库 `products=120`、`orders=7`、`users=13`，`CHECKSUM TABLE` 两表一致 → 删除临时库。演示范围不设定时备份任务，dump 仅留在 ECS `/tmp`。
+
 ## 回滚
 
 1. 代码：本地 `git revert` 后重新执行 `scripts/deploy-ecs.sh`
@@ -101,6 +104,6 @@ ssh ecs 'docker run --rm -v kdshop_minio-data:/data -v ~/backup:/backup alpine t
 
 ## 已知限制
 
-- **无 HTTPS**：没有域名与备案，密码在公网明文传输，只适合演示
+- **无 HTTPS**：没有域名与备案，密码在公网明文传输；演示范围接受，不做升级
 - Mailpit 不对外，看邮件需要 SSH 隧道：`ssh -fN -L 8025:127.0.0.1:8025 ecs` 后开 `http://127.0.0.1:8025`
 - 2C1.8G 跑 6 个容器属于紧平衡，日志增长与镜像堆积需要定期清理：`docker system prune -af`

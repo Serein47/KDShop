@@ -2,7 +2,7 @@
 
 一个可跑通、可演示的多商家电商平台：8 个通用类目 + 手作家居 / 文具 / 礼物三个特色专区，支持定金尾款、工期承诺与带质检的售后闭环。
 
-> 当前状态：**主线可用**。顾客购物链路、商家后台、平台治理与结算、定金/尾款定制交易均已打通；工期赔付、售后质检与演示脚本在推进中。功能进度以 [GitHub Issues](https://github.com/Serein47/KDShop/issues) 为准。
+> 当前状态：**V1 功能完成、演示可访问**。本地 `scripts/dev.ps1 start` 一键起；线上 <http://8.134.215.195/>（HTTP）。本项目定位演示，不做 CI、安全加固与 HTTPS。
 
 ![首页](docs/screenshots/home.png)
 
@@ -21,11 +21,21 @@ cd frontend && npm run e2e   # 需要后端 8081、前端 5180、Mailpit 8025
 | 后端 | Spring Boot 3.5 · JDK 21 · MyBatis-Plus · Flyway · Spring Security（会话 + CSRF） |
 | 前端 | Vue 3 · TypeScript · Vite · Pinia · Vue Router |
 | 存储 | MySQL 8 · Redis 7（会话与限流）· MinIO（商品图）· Mailpit（邮件捕获） |
-| 部署 | Docker Compose（基础设施）+ 阿里云（生产，待上线） |
+| 部署 | Docker Compose（本地）+ 阿里云 ECS（HTTP 演示环境，已部署） |
 
 ## 快速开始
 
-前置：Docker、JDK 21、Maven 3.9+、Node 20+。
+前置：WSL2 + Docker（Ubuntu 发行版）、JDK 21、Maven 3.9+、Node 20+。
+
+**一条命令（推荐）**
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts\dev.ps1 start
+```
+
+脚本会起 WSL 基础设施（MySQL / Redis / MinIO / Mailpit）、后端 8080、前端 5173，并等到真正可用；`stop` 停止、`status` 只读检查。
+
+**手动三步（与脚本等价）**
 
 ```bash
 # 1) 基础设施（MySQL / Redis / MinIO / Mailpit）
@@ -65,14 +75,14 @@ npm run dev
 
 | 域 | 已完成 | 计划中 |
 |---|---|---|
-| 账号 | 注册、登录、登出、邮箱验证、重置密码、会话与 CSRF | — |
-| 商品 | 类目树、三维标签筛选、详情（限量/孤品/故事/瑕疵说明）、店铺页 | 定制项参与下单 |
+| 账号 | 注册、登录、登出、邮箱验证、重置密码、会话与 CSRF、平台侧脱敏与禁用踢下线 | — |
+| 商品 | 类目树、三维标签筛选、详情（限量/孤品/故事/瑕疵说明）、店铺页、定制项下单（立即购买） | — |
 | 购物车 | 服务端与本地双模式、登录合并、库存校验 | — |
-| 结算 | 按商家拆单、独立运费、优惠券分摊、地址簿、提交订单 | — |
-| 交易 | 下单、模拟支付、支付入账、订单列表/详情、取消、确认收货 | 定时任务、发货、退款 |
-| 商家端 | 入驻、店铺资料、商品管理（现货/预售/定制）、发货、退款处理、结算单 | — |
-| 平台端 | 商家审核与封禁、商品/类目治理、订单检索、退款介入、结算、看板、审计、账号权限 | — |
-| 差异化 | 销售模式与定金比例、定金支付、制作中、尾款支付与逾期关闭、工期超时赔付与结算扣减、退货物流与质检入库、超时自动裁决与责任归属、售后冻结结算与对账、定制项快照、礼物场景 | 演示脚本（#50）、CI（#5） |
+| 结算 | 按商家拆单、独立运费、优惠券分摊、地址簿、提交订单、礼物包装与贺卡 | — |
+| 交易 | 下单、模拟支付、支付入账、订单列表/详情、取消、确认收货、定时任务（超时取消/自动收货/尾款/赔付） | — |
+| 商家端 | 入驻、店铺资料、商品管理（现货/预售/定制）、发货、退款处理、售后处理（审核/收货/质检）、结算单 | — |
+| 平台端 | 商家审核与封禁、商品/类目治理、订单检索、退款介入、售后裁决、结算、看板、审计、账号权限 | — |
+| 差异化 | 销售模式与定金比例、定金支付、制作中、尾款支付与逾期关闭、工期超时赔付与结算扣减、退货物流与质检入库、超时自动裁决与责任归属、售后冻结结算与对账、定制项快照、礼物场景 | —（#5 CI、#50 演示脚本已按演示范围关闭） |
 
 ## 项目结构
 
@@ -107,16 +117,20 @@ cd frontend && npm run ui:check
 | [AGENTS.md](AGENTS.md) | 项目章程：范围、流程门禁、质量底线 |
 | [docs/requirements.md](docs/requirements.md) | 需求与验收线 |
 | [docs/data-model.md](docs/data-model.md) | 数据模型与不变量 |
-| [docs/order-lifecycle.md](docs/order-lifecycle.md) | 订单 / 支付 / 退款 / 结算状态机 |
+| [docs/order-lifecycle.md](docs/order-lifecycle.md) | 订单 / 支付 / 退款 / 结算 / 售后状态机 |
 | [docs/接口文档/](docs/接口文档/) | 分域接口契约（含请求响应示例） |
+| [docs/e2e.md](docs/e2e.md) | 端到端测试与最近一次实测结果 |
+| [docs/deployment.md](docs/deployment.md) | 本地与线上部署、备份与回滚 |
+| [docs/test-accounts.md](docs/test-accounts.md) | 演示账号与访问地址 |
 | [docs/adr/](docs/adr/) | 架构决策记录 |
-| [docs/issues/](docs/issues/) | 任务拆分与里程碑 |
+| [docs/issues/](docs/issues/) | 任务拆分与里程碑（历史记录） |
 
 ## 已知边界
 
 - **支付**是自研模拟网关，不接真实通道；签名、回调、幂等、对账按真实协议设计
 - **邮件**：本地 profile 通过 SMTP 投到 Mailpit；生产默认 `OUTBOX_ONLY`，只写 `email_outbox`，不触达真实邮箱
-- **商品图**暂无实拍图，前端用「首字 + 纸样渐变」占位
+- **演示定位**：线上 `http://8.134.215.195/` 为 HTTP 演示环境，不接 HTTPS、不做自动备份与安全加固，账号统一演示口令
+- **定制项商品**走「立即购买」，不进入按 SKU 存储的购物车；改选项需重新下单
 - 列表在百级 SKU 规模下采用内存排序分页，超过千级需改为 SQL 分页
 - 前端 Element Plus 全量引入，包体约 1 MB，后续改按需引入
 
